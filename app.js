@@ -332,7 +332,7 @@ function toggleSubTag(btn, tag) {
 
 function updateIntensityText(val) {
   APP_STATE.selectedIntensity = parseInt(val, 10);
-  const labels = ['', '1단계 (약간이에요)', '2단계 (조금 느껴져요)', '3단계 (보통이에요)', '4단계 (꽤 커요!)', '5단계 (매우 가득해요!!)];
+  const labels = ['', '1단계 (약간이에요)', '2단계 (조금 느껴져요)', '3단계 (보통이에요)', '4단계 (꽤 커요!)', '5단계 (매우 가득해요!!)'];
   const el = document.getElementById('intensityText');
   if (el) el.textContent = labels[val] || `${val}단계`;
 }
