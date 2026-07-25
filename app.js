@@ -208,6 +208,7 @@ function updateUserUI() {
   const userEmailText = document.getElementById('userEmailText');
   const userAvatarImg = document.getElementById('userAvatarImg');
   const greetingStudentName = document.getElementById('greetingStudentName');
+  const btnModeToggle = document.getElementById('btnModeToggle');
 
   if (APP_STATE.currentUser) {
     btnGoogleLogin.classList.add('hidden');
@@ -218,18 +219,44 @@ function updateUserUI() {
     userAvatarImg.src = APP_STATE.currentUser.avatar;
     if (greetingStudentName) greetingStudentName.textContent = APP_STATE.currentUser.name;
 
+    // Check if logged in user has Teacher/Admin role
+    const isTeacherAccount = APP_STATE.currentUser.isTeacher || 
+      (APP_STATE.currentUser.email && (APP_STATE.currentUser.email.includes('teacher') || APP_STATE.currentUser.email.includes('admin')));
+
+    if (isTeacherAccount) {
+      // Teacher Account: Show Teacher Mode Toggle Button
+      if (btnModeToggle) btnModeToggle.classList.remove('hidden');
+    } else {
+      // Student Account: HIDE Teacher Mode Button Completely
+      if (btnModeToggle) btnModeToggle.classList.add('hidden');
+      
+      // If currently on teacher tab, force back to student view
+      APP_STATE.isTeacherMode = false;
+      document.getElementById('tab-teacher-dashboard').classList.add('hidden');
+      switchTab('tab-write');
+    }
+
     updateStreakCounter();
   } else {
     btnGoogleLogin.classList.remove('hidden');
     userProfileBadge.classList.add('hidden');
+    if (btnModeToggle) btnModeToggle.classList.add('hidden');
     if (greetingStudentName) greetingStudentName.textContent = '라온반 학생';
   }
+}
+
+function switchToTeacherLoginModal() {
+  closeLoginModal();
+  document.getElementById('teacherAuthModal').classList.remove('hidden');
 }
 
 function handleLogout() {
   if (confirm('로그아웃 하시겠습니까?')) {
     APP_STATE.currentUser = null;
+    APP_STATE.isTeacherMode = false;
     localStorage.removeItem('raon_current_user');
+    document.getElementById('tab-teacher-dashboard').classList.add('hidden');
+    switchTab('tab-write');
     updateUserUI();
   }
 }
