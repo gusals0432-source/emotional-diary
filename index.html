@@ -535,20 +535,49 @@
     </div>
   </div>
 
-  <!-- TEACHER AUTH MODAL -->
+  <!-- TEACHER ADMIN AUTH MODAL -->
   <div id="teacherAuthModal" class="modal-overlay hidden">
     <div class="modal-card teacher-auth-card">
       <button class="modal-close" onclick="closeTeacherAuthModal()">&times;</button>
       <div class="modal-header">
         <div class="teacher-icon-badge">👩‍🏫</div>
-        <h2>선생님 전용 로그인</h2>
-        <p>담임 선생님 확인을 위해 암호(기본: 1234)를 입력하세요.</p>
+        <h2>선생님 / 관리자 로그인</h2>
+        <p>새뜸초 6학년 라온반 담임 교사 관리자 계정으로 로그인해 주세요.</p>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <input type="password" id="teacherPinInput" placeholder="선생님 비밀번호 입력" maxlength="8">
+        
+        <!-- Teacher Admin Direct ID / Email Form -->
+        <form id="teacherLoginForm" onsubmit="handleTeacherAdminLogin(event)">
+          <div class="form-group">
+            <label for="teacherIdInput"><i class="fa-solid fa-user-gear"></i> 관리자 아이디 (또는 교사 이메일)</label>
+            <input type="text" id="teacherIdInput" placeholder="예: teacher@saettum.es.kr 또는 admin" required>
+          </div>
+
+          <div class="form-group">
+            <label for="teacherPasswordInput"><i class="fa-solid fa-lock"></i> 관리자 비밀번호</label>
+            <input type="password" id="teacherPasswordInput" placeholder="비밀번호 입력 (기본: 1234)" required>
+          </div>
+
+          <button type="submit" class="btn-primary full-width" style="margin-top: 8px;">
+            <i class="fa-solid fa-right-to-bracket"></i> 선생님 관리자 로그인
+          </button>
+        </form>
+
+        <div class="modal-divider">
+          <span>또는 담임선생님 계정으로 빠른 원클릭 접속</span>
         </div>
-        <button class="btn-primary full-width" onclick="verifyTeacherPin()">비밀번호 확인</button>
+
+        <!-- Quick Teacher Demo Account Button -->
+        <div class="demo-accounts-list">
+          <button type="button" class="demo-account-chip teacher-chip" onclick="simulateTeacherLogin('라온반 담임선생님', 'teacher@saettum.es.kr')">
+            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Teacher" alt="Teacher">
+            <div>
+              <strong>👩‍🏫 담임선생님 계정 로그인</strong>
+              <div style="font-size: 0.78rem; color: #64748b;">teacher@saettum.es.kr (관리자 권한)</div>
+            </div>
+          </button>
+        </div>
+
       </div>
     </div>
   </div>

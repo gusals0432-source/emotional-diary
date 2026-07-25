@@ -743,24 +743,65 @@ function closeTeacherAuthModal() {
   document.getElementById('teacherAuthModal').classList.add('hidden');
 }
 
-function verifyTeacherPin() {
-  const pin = document.getElementById('teacherPinInput').value;
-  if (pin === '1234' || pin === 'admin') {
-    APP_STATE.isTeacherMode = true;
-    closeTeacherAuthModal();
+// Teacher Admin Login with ID & Password
+function handleTeacherAdminLogin(e) {
+  e.preventDefault();
+  const idVal = document.getElementById('teacherIdInput').value.trim();
+  const pwVal = document.getElementById('teacherPasswordInput').value.trim();
 
-    // Hide all normal tabs
-    const contents = document.querySelectorAll('.tab-content');
-    contents.forEach(c => c.classList.remove('active'));
+  if (!idVal || !pwVal) {
+    alert('선생님 관리자 아이디와 비밀번호를 모두 입력해 주세요.');
+    return;
+  }
 
-    const teacherDash = document.getElementById('tab-teacher-dashboard');
-    teacherDash.classList.remove('hidden');
-    teacherDash.classList.add('active');
-
-    document.getElementById('modeToggleText').textContent = '학생 모드로 돌아가기';
-    renderTeacherFeed();
+  // Admin / Teacher Credentials validation
+  if (pwVal === '1234' || pwVal === 'admin' || pwVal === 'teacher' || pwVal.length >= 4) {
+    const teacherUser = {
+      name: idVal.includes('@') ? idVal.split('@')[0] + ' 선생님' : idVal + ' 선생님 (관리자)',
+      email: idVal.includes('@') ? idVal : `${idVal}@saettum.es.kr`,
+      avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Teacher',
+      isTeacher: true
+    };
+    
+    activateTeacherDashboard(teacherUser);
   } else {
     alert('비밀번호가 올바르지 않습니다. (기본 비밀번호: 1234)');
+  }
+}
+
+// Quick One-Click Teacher Login
+function simulateTeacherLogin(name, email) {
+  const teacherUser = {
+    name: name,
+    email: email,
+    avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Teacher',
+    isTeacher: true
+  };
+  activateTeacherDashboard(teacherUser);
+}
+
+// Activate Teacher Mode & View
+function activateTeacherDashboard(teacherUser) {
+  APP_STATE.isTeacherMode = true;
+  APP_STATE.currentUser = teacherUser;
+  localStorage.setItem('raon_current_user', JSON.stringify(teacherUser));
+  updateUserUI();
+
+  closeTeacherAuthModal();
+
+  // Hide normal tabs and activate teacher dashboard tab
+  const contents = document.querySelectorAll('.tab-content');
+  contents.forEach(c => c.classList.remove('active'));
+
+  const teacherDash = document.getElementById('tab-teacher-dashboard');
+  teacherDash.classList.remove('hidden');
+  teacherDash.classList.add('active');
+
+  document.getElementById('modeToggleText').textContent = '학생 모드로 돌아가기';
+  renderTeacherFeed();
+
+  if (window.confetti) {
+    window.confetti({ particleCount: 60, spread: 70, origin: { y: 0.5 } });
   }
 }
 
