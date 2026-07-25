@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>새뜸초 6학년 라온반 아침 마음 일기 🌈</title>
+  <meta name="description" content="새뜸초등학교 6학년 라온반 학생들이 등교 후 아침 감정을 선택하고 감정과 관련된 마음 일기를 작성하는 웹 앱입니다.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Google Identity Services API (Google OAuth 2.0) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
+  <!-- Canvas Confetti for Celebration Effects -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="joy">
+  <!-- Dynamic Background Ambient Aura -->
+  <div class="ambient-glow bg-aura-1"></div>
+  <div class="ambient-glow bg-aura-2"></div>
+
+  <!-- App Wrapper -->
+  <div id="app" class="app-container">
+    
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">🌈</div>
+        <div class="brand-text">
+          <h1>새뜸초 6학년 라온반</h1>
+          <span class="sub-title">아침 마음 일기장</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="time-widget" id="timeWidget">
+          <i class="fa-regular fa-clock"></i>
+          <span id="currentDateTime">2026년 7월 25일 금요일 08:30</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Google User Profile / Auth Area -->
+        <div id="userAuthArea" class="user-auth-area">
+          <button id="btnGoogleLogin" class="btn-google-login" onclick="openLoginModal()">
+            <img src="https://lh3.googleusercontent.com/COxitduyYXxAVXFTq8VZWBW9xqYxMlhVEy25JaPq4iuTQ0W1s6ptGLAkD0l06nPvu8SsuJGKn5sM7ICX1ainwAc" alt="Google" class="google-icon-img">
+            <span>구글 계정 로그인</span>
+          </button>
+
+          <div id="userProfileBadge" class="user-profile-badge hidden">
+            <img id="userAvatarImg" src="" alt="구글 프로필" class="user-avatar-img">
+            <div class="user-info-text">
+              <span id="userNameText" class="user-name">학생 이름</span>
+              <span id="userEmailText" class="user-email">email@school.es.kr</span>
+            </div>
+            <button class="btn-icon-alt" title="로그아웃 / 계정 전환" onclick="handleLogout()">
+              <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+          </div>
+        </div>
+
+        <button class="btn-mode-toggle" id="btnModeToggle" onclick="toggleTeacherMode()">
+          <i class="fa-solid fa-chalkboard-user"></i>
+          <span id="modeToggleText">선생님 모드</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="app-nav">
+      <button class="nav-tab active" data-tab="tab-write" onclick="switchTab('tab-write')">
+        <i class="fa-solid fa-pen-fancy"></i>
+        <span>오늘의 마음 일기</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-class-weather" onclick="switchTab('tab-class-weather')">
+        <i class="fa-solid fa-cloud-sun"></i>
+        <span>라온반 마음 날씨</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-history" onclick="switchTab('tab-history')">
+        <i class="fa-solid fa-calendar-days"></i>
+        <span>내 마음 달력</span>
+      </button>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="app-main">
+      
+      <!-- TAB 1: DIARY WRITING & EMOTION SELECTION -->
+      <section id="tab-write" class="tab-content active">
+        
+        <!-- Welcome Greeting Card -->
+        <div class="welcome-card">
+          <div class="welcome-text">
+            <h2>좋은 아침이에요, <span id="greetingStudentName">라온반 학생</span>님! 👋</h2>
+            <p>오늘 아침 마음의 소리에 귀 기울여 보세요. 지금 어떤 마음인가요?</p>
+          </div>
+          <div class="streak-badge">
+            <i class="fa-solid fa-fire"></i>
+            <span>연속 <strong id="streakCount">1</strong>일째 마음 기록 중</span>
+          </div>
+        </div>
+
+        <!-- STEP 1: EMOTION SELECTION (대표 감정 5가지) -->
+        <div class="section-card">
+          <div class="section-header">
+            <span class="step-badge">Step 1</span>
+            <h3>오늘 아침 대표 감정 1가지를 선택해 보세요</h3>
+          </div>
+
+          <div class="emotions-grid" id="emotionsGrid">
+            <!-- Emotion Card 1: Joy -->
+            <div class="emotion-card" data-emotion="joy" onclick="selectEmotion('joy')">
+              <div class="emotion-emoji-wrapper">
+                <span class="emotion-emoji">😃</span>
+              </div>
+              <h4 class="emotion-title">기쁨 · 설렘</h4>
+              <p class="emotion-desc">신나고 기분 좋은 아침</p>
+              <div class="selected-indicator"><i class="fa-solid fa-check"></i></div>
+            </div>
+
+            <!-- Emotion Card 2: Calm -->
+            <div class="emotion-card" data-emotion="calm" onclick="selectEmotion('calm')">
+              <div class="emotion-emoji-wrapper">
+                <span class="emotion-emoji">😌</span>
+              </div>
+              <h4 class="emotion-title">평온 · 편안</h4>
+              <p class="emotion-desc">차분하고 마음이 편한 아침</p>
+              <div class="selected-indicator"><i class="fa-solid fa-check"></i></div>
+            </div>
+
+            <!-- Emotion Card 3: Worry -->
+            <div class="emotion-card" data-emotion="anxious" onclick="selectEmotion('anxious')">
+              <div class="emotion-emoji-wrapper">
+                <span class="emotion-emoji">😟</span>
+              </div>
+              <h4 class="emotion-title">걱정 · 불안</h4>
+              <p class="emotion-desc">마음이 조마조마하고 신경 쓰이는 아침</p>
+              <div class="selected-indicator"><i class="fa-solid fa-check"></i></div>
+            </div>
+
+            <!-- Emotion Card 4: Sad -->
+            <div class="emotion-card" data-emotion="sad" onclick="selectEmotion('sad')">
+              <div class="emotion-emoji-wrapper">
+                <span class="emotion-emoji">😢</span>
+              </div>
+              <h4 class="emotion-title">슬픔 · 시무룩</h4>
+              <p class="emotion-desc">마음이 가라앉고 속상한 아침</p>
+              <div class="selected-indicator"><i class="fa-solid fa-check"></i></div>
+            </div>
+
+            <!-- Emotion Card 5: Angry -->
+            <div class="emotion-card" data-emotion="angry" onclick="selectEmotion('angry')">
+              <div class="emotion-emoji-wrapper">
+                <span class="emotion-emoji">😡</span>
+              </div>
+              <h4 class="emotion-title">화남 · 짜증</h4>
+              <p class="emotion-desc">답답하거나 기분이 얹짢은 아침</p>
+              <div class="selected-indicator"><i class="fa-solid fa-check"></i></div>
+            </div>
+          </div>
+
+          <!-- Sub-Emotions Tags & Intensity (Appears on selection) -->
+          <div id="emotionDetailBox" class="emotion-detail-box hidden">
+            <div class="detail-row">
+              <label><i class="fa-solid fa-sliders"></i> 감정의 크기는 어느 정도인가요?</label>
+              <div class="intensity-slider-wrapper">
+                <input type="range" id="intensityRange" min="1" max="5" value="3" oninput="updateIntensityText(this.value)">
+                <span id="intensityText" class="intensity-badge">3단계 (보통이에요)</span>
+              </div>
+            </div>
+
+            <div class="detail-row">
+              <label><i class="fa-solid fa-tags"></i> 지금 느껴지는 세부 감정 태그 (선택):</label>
+              <div id="subTagsContainer" class="sub-tags-container">
+                <!-- Dynamic Tag Chips populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: MIND DIARY WRITING -->
+        <div class="section-card">
+          <div class="section-header">
+            <span class="step-badge">Step 2</span>
+            <h3>마음 일기 쓰기</h3>
+          </div>
+
+          <!-- Dynamic Question Prompt Card -->
+          <div id="promptCard" class="prompt-card">
+            <div class="prompt-icon">💡</div>
+            <div class="prompt-text">
+              <span class="prompt-subtitle">오늘의 아침 생각 질문</span>
+              <p id="promptQuestionText">감정을 먼저 선택해 주시면 맞춤 질문이 나타납니다!</p>
+            </div>
+          </div>
+
+          <!-- Writing Form -->
+          <form id="diaryForm" onsubmit="handleDiarySubmit(event)">
+            <!-- Diary Title / One Liner -->
+            <div class="form-group">
+              <label for="diaryTitle"><i class="fa-solid fa-heading"></i> 오늘의 마음 한 줄 (제목)</label>
+              <input type="text" id="diaryTitle" placeholder="예: 오늘 아침 체육 시간이 기대되는 마음!" required maxlength="50">
+            </div>
+
+            <!-- Context Quick Tags -->
+            <div class="form-group">
+              <label><i class="fa-solid fa-icons"></i> 무엇과 관련된 마음인가요?</label>
+              <div class="quick-category-chips">
+                <button type="button" class="cat-chip" onclick="toggleCatChip(this, '등교/날씨')">🌤️ 등교/날씨</button>
+                <button type="button" class="cat-chip" onclick="toggleCatChip(this, '친구관계')">👥 친구관계</button>
+                <button type="button" class="cat-chip" onclick="toggleCatChip(this, '수업/공부')">📚 수업/공부</button>
+                <button type="button" class="cat-chip" onclick="toggleCatChip(this, '가족/집')">🏠 가족/집</button>
+                <button type="button" class="cat-chip" onclick="toggleCatChip(this, '건강/몸상태')">💪 건강/몸상태</button>
+                <button type="button" class="cat-chip" onclick="toggleCatChip(this, '취미/기타')">🎨 취미/기타</button>
+              </div>
+            </div>
+
+            <!-- Diary Body Content -->
+            <div class="form-group">
+              <label for="diaryContent"><i class="fa-solid fa-feather-pointed"></i> 솔직한 내 마음 이야기</label>
+              <textarea id="diaryContent" rows="5" placeholder="오늘 아침 내 마음의 이유나 솔직한 생각을 자유롭게 적어보세요. 짧아도 괜찮아요!" required></textarea>
+              <div class="char-counter"><span id="charCount">0</span>자 작성</div>
+            </div>
+
+            <!-- Sticker Selection -->
+            <div class="form-group">
+              <label><i class="fa-solid fa-stamp"></i> 오늘 나에게 주고 싶은 마음 스티커</label>
+              <div class="sticker-selector">
+                <button type="button" class="sticker-btn active" onclick="selectSticker('⭐')">⭐ 빛나는 마음</button>
+                <button type="button" class="sticker-btn" onclick="selectSticker('🍀')">🍀 행운 가득</button>
+                <button type="button" class="sticker-btn" onclick="selectSticker('💖')">💖 사랑해요</button>
+                <button type="button" class="sticker-btn" onclick="selectSticker('🌈')">🌈 무지개 빛</button>
+                <button type="button" class="sticker-btn" onclick="selectSticker('☀️')">☀️ 따뜻한 햇살</button>
+                <button type="button" class="sticker-btn" onclick="selectSticker('☕')">☕ 토닥토닥</button>
+                <button type="button" class="sticker-btn" onclick="selectSticker('👑')">👑 당당하게</button>
+              </div>
+            </div>
+
+            <!-- Privacy & Sharing Option -->
+            <div class="privacy-option-box">
+              <div class="checkbox-group">
+                <input type="checkbox" id="chkShareClass" checked>
+                <label for="chkShareClass">
+                  <strong>라온반 마음 날씨에 공유하기</strong> (친구들과 아침 마음 통계로 공유됩니다)
+                </label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="chkTeacherOnly">
+                <label for="chkTeacherOnly">
+                  🔒 <strong>선생님만 보기</strong> (선생님만 이 일기를 읽으실 수 있습니다)
+                </label>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-actions">
+              <button type="submit" class="btn-submit-diary" id="btnSubmitDiary">
+                <i class="fa-solid fa-paper-plane"></i>
+                <span>오늘의 마음 일기 제출하기</span>
+              </button>
+            </div>
+          </form>
+
+        </div>
+
+      </section>
+
+      <!-- TAB 2: CLASSROOM MORNING WEATHER & AGGREGATE DASHBOARD -->
+      <section id="tab-class-weather" class="tab-content">
+        <div class="section-card">
+          <div class="section-header">
+            <h3><i class="fa-solid fa-cloud-sun"></i> 오늘 라온반 아침 마음 날씨</h3>
+            <span class="live-badge"><i class="fa-solid fa-circle"></i> 실시간</span>
+          </div>
+
+          <!-- Class Weather Visual Counter -->
+          <div class="weather-summary-grid">
+            <div class="weather-stat-card joy">
+              <div class="stat-icon">😃</div>
+              <div class="stat-info">
+                <span class="stat-label">기쁨 · 설렘</span>
+                <span class="stat-value" id="statJoyCount">0명 (0%)</span>
+              </div>
+            </div>
+            <div class="weather-stat-card calm">
+              <div class="stat-icon">😌</div>
+              <div class="stat-info">
+                <span class="stat-label">평온 · 편안</span>
+                <span class="stat-value" id="statCalmCount">0명 (0%)</span>
+              </div>
+            </div>
+            <div class="weather-stat-card anxious">
+              <div class="stat-icon">😟</div>
+              <div class="stat-info">
+                <span class="stat-label">걱정 · 불안</span>
+                <span class="stat-value" id="statAnxiousCount">0명 (0%)</span>
+              </div>
+            </div>
+            <div class="weather-stat-card sad">
+              <div class="stat-icon">😢</div>
+              <div class="stat-info">
+                <span class="stat-label">슬픔 · 시무룩</span>
+                <span class="stat-value" id="statSadCount">0명 (0%)</span>
+              </div>
+            </div>
+            <div class="weather-stat-card angry">
+              <div class="stat-icon">😡</div>
+              <div class="stat-info">
+                <span class="stat-label">화남 · 짜증</span>
+                <span class="stat-value" id="statAngryCount">0명 (0%)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Bar Chart -->
+          <div class="emotion-bar-chart">
+            <div class="bar-title">라온반 마음 분포 비율</div>
+            <div class="stacked-bar-container" id="stackedBarContainer">
+              <!-- Stacked bars generated by JS -->
+            </div>
+          </div>
+
+          <!-- Student Emotion Board -->
+          <div class="class-feed-section">
+            <h4><i class="fa-solid fa-comments"></i> 친구들의 아침 한 마디 (공유된 소식)</h4>
+            <div class="feed-grid" id="classFeedGrid">
+              <!-- Feed Cards dynamically inserted -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 3: CALENDAR & DIARY HISTORY -->
+      <section id="tab-history" class="tab-content">
+        <div class="section-card">
+          <div class="section-header">
+            <h3><i class="fa-solid fa-calendar-heart"></i> 내 마음 달력 & 기록장</h3>
+            <div class="calendar-nav-controls">
+              <button class="btn-icon" onclick="changeMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+              <span id="calendarMonthTitle" class="month-title">2026년 7월</span>
+              <button class="btn-icon" onclick="changeMonth(1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+          </div>
+
+          <!-- Calendar Grid -->
+          <div class="calendar-container">
+            <div class="calendar-weekdays">
+              <div class="weekday sun">일</div>
+              <div class="weekday">월</div>
+              <div class="weekday">화</div>
+              <div class="weekday">수</div>
+              <div class="weekday">목</div>
+              <div class="weekday">금</div>
+              <div class="weekday sat">토</div>
+            </div>
+            <div class="calendar-days-grid" id="calendarDaysGrid">
+              <!-- Days populated by JS -->
+            </div>
+          </div>
+
+          <!-- History List Below Calendar -->
+          <div class="history-list-section">
+            <h4><i class="fa-solid fa-book-open"></i> 최근 작성한 마음 일기</h4>
+            <div id="historyListContainer" class="history-list-container">
+              <!-- History Cards -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TEACHER DASHBOARD MODE (Dynamic Section) -->
+      <section id="tab-teacher-dashboard" class="tab-content hidden">
+        <div class="section-card teacher-card">
+          <div class="section-header">
+            <h3><i class="fa-solid fa-chalkboard-user"></i> 라온반 담임 교사 전용 관리 대시보드</h3>
+            <span class="teacher-badge"><i class="fa-solid fa-user-shield"></i> 교사 전용 인증됨</span>
+          </div>
+
+          <p class="teacher-desc">
+            오늘 우리 라온반 학생들의 아침 감정과 작성한 일기를 확인하고 따뜻한 피드백을 남겨주세요.
+          </p>
+
+          <!-- Filter & Statistics -->
+          <div class="teacher-toolbar">
+            <div class="filter-group">
+              <label>감정별 필터:</label>
+              <select id="teacherEmotionFilter" onchange="renderTeacherFeed()">
+                <option value="all">전체 감정 보기</option>
+                <option value="joy">😃 기쁨/설렘</option>
+                <option value="calm">😌 평온/편안</option>
+                <option value="anxious">😟 걱정/불안 (관심 필요)</option>
+                <option value="sad">😢 슬픔/시무룩 (관심 필요)</option>
+                <option value="angry">😡 화남/짜증 (관심 필요)</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>날짜 선택:</label>
+              <input type="date" id="teacherDateFilter" onchange="renderTeacherFeed()">
+            </div>
+          </div>
+
+          <!-- Student Entries Grid for Teacher -->
+          <div class="teacher-entries-grid" id="teacherEntriesGrid">
+            <!-- Student cards with teacher comment input -->
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+      <p>새뜸초등학교 6학년 라온반 아침 마음 일기 프로젝트 💖 | 따뜻한 아침을 만드는 우리의 공간</p>
+    </footer>
+  </div>
+
+  <!-- GOOGLE LOGIN MODAL -->
+  <div id="loginModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeLoginModal()">&times;</button>
+      
+      <div class="modal-header">
+        <div class="google-logo-badge">
+          <img src="https://lh3.googleusercontent.com/COxitduyYXxAVXFTq8VZWBW9xqYxMlhVEy25JaPq4iuTQ0W1s6ptGLAkD0l06nPvu8SsuJGKn5sM7ICX1ainwAc" alt="Google">
+        </div>
+        <h2>구글 계정 로그인</h2>
+        <p>새뜸초등학교 6학년 라온반 구글 계정으로 로그인해 주세요.</p>
+      </div>
+
+      <div class="modal-body">
+        
+        <!-- Standard Google Identity Services Button Container -->
+        <div id="g_id_onload"
+             data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+             data-context="signin"
+             data-ux_mode="popup"
+             data-callback="handleGoogleCredentialResponse"
+             data-auto_select="false">
+        </div>
+
+        <div class="g-signin-wrapper">
+          <div class="g_id_signin"
+               data-type="standard"
+               data-shape="rectangular"
+               data-theme="outline"
+               data-text="signin_with"
+               data-size="large"
+               data-logo_alignment="left">
+          </div>
+        </div>
+
+        <div class="modal-divider">
+          <span>또는 라온반 테스트 계정으로 바로 시작</span>
+        </div>
+
+        <!-- Quick Demo Accounts for Immediate Classroom Testing -->
+        <div class="demo-accounts-list">
+          <label>클릭하여 빠른 로그인 (테스트용 학생 프로필):</label>
+          <div class="demo-chips-grid">
+            <button class="demo-account-chip" onclick="simulateGoogleLogin('김민준', 'minjun.kim@saettum.es.kr', 'https://api.dicebear.com/7.x/bottts/svg?seed=Minjun')">
+              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Minjun" alt="Minjun">
+              <span>김민준 (minjun.kim@saettum.es.kr)</span>
+            </button>
+
+            <button class="demo-account-chip" onclick="simulateGoogleLogin('이서연', 'seoyeon.lee@saettum.es.kr', 'https://api.dicebear.com/7.x/bottts/svg?seed=Seoyeon')">
+              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Seoyeon" alt="Seoyeon">
+              <span>이서연 (seoyeon.lee@saettum.es.kr)</span>
+            </button>
+
+            <button class="demo-account-chip" onclick="simulateGoogleLogin('박지후', 'jihu.park@saettum.es.kr', 'https://api.dicebear.com/7.x/bottts/svg?seed=Jihu')">
+              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Jihu" alt="Jihu">
+              <span>박지후 (jihu.park@saettum.es.kr)</span>
+            </button>
+
+            <button class="demo-account-chip" onclick="simulateGoogleLogin('최하은', 'haeun.choi@saettum.es.kr', 'https://api.dicebear.com/7.x/bottts/svg?seed=Haeun')">
+              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Haeun" alt="Haeun">
+              <span>최하은 (haeun.choi@saettum.es.kr)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Custom Email Entry Option -->
+        <div class="custom-email-box">
+          <label for="customGoogleName">내 이름 & 구글 이메일 직접 입력:</label>
+          <div class="input-row">
+            <input type="text" id="customGoogleName" placeholder="예: 홍길동">
+            <input type="email" id="customGoogleEmail" placeholder="id@school.es.kr">
+            <button class="btn-secondary" onclick="handleCustomGoogleLogin()">로그인</button>
+          </div>
+        </div>
+
+        <!-- Google Client ID Option for Admin -->
+        <details class="client-id-settings">
+          <summary><i class="fa-solid fa-gear"></i> 구글 OAuth Client ID 직접 입력 (교사용 설정)</summary>
+          <div class="client-id-form">
+            <input type="text" id="inputClientId" placeholder="xxxx.apps.googleusercontent.com">
+            <button onclick="saveClientId()">Client ID 저장</button>
+          </div>
+        </details>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SUCCESS CONGRATS MODAL -->
+  <div id="successModal" class="modal-overlay hidden">
+    <div class="modal-card success-card">
+      <div class="success-icon">🎉</div>
+      <h2>오늘 아침 마음 일기 제출 완료!</h2>
+      <p id="successMessageText">라온반 학생님의 소중한 마음이 잘 기록되었습니다.</p>
+      
+      <div class="quote-box">
+        <i class="fa-solid fa-quote-left"></i>
+        <span id="dailyQuoteText">"오늘 하루도 나답게, 밝고 건강하게 보내세요!"</span>
+        <i class="fa-solid fa-quote-right"></i>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="closeSuccessModalAndGoToWeather()">
+          <i class="fa-solid fa-cloud-sun"></i> 라온반 마음 날씨 보러가기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEACHER AUTH MODAL -->
+  <div id="teacherAuthModal" class="modal-overlay hidden">
+    <div class="modal-card teacher-auth-card">
+      <button class="modal-close" onclick="closeTeacherAuthModal()">&times;</button>
+      <div class="modal-header">
+        <div class="teacher-icon-badge">👩‍🏫</div>
+        <h2>선생님 전용 로그인</h2>
+        <p>담임 선생님 확인을 위해 암호(기본: 1234)를 입력하세요.</p>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <input type="password" id="teacherPinInput" placeholder="선생님 비밀번호 입력" maxlength="8">
+        </div>
+        <button class="btn-primary full-width" onclick="verifyTeacherPin()">비밀번호 확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

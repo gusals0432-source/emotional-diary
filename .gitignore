@@ -1,0 +1,11 @@
+# Node / NPM
+node_modules/
+npm-debug.log*
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
