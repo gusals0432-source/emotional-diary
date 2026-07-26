@@ -1,19 +1,28 @@
 /* ==========================================================================
-   새뜸초등학교 6학년 라온반 아침 마음 일기장 MAIN JAVASCRIPT
+   전국 아침 마음 일기장 MAIN JAVASCRIPT
+   - 다학급(1~6학년, 1~10반) 자동 확장
+   - 교사 구글 로그인 & 학반 자동 생성 (고유 학급 초대 코드 발급)
+   - 실명 학생 로그인 & 학급 코드 검증
+   - 최종 관리자(gusals0432@gmail.com) 가입 교사 및 학반 통합 관리 센터
+   - 로그인 유지를 보장하는 스마트 되돌리기(goBack) 네비게이션
    ========================================================================== */
 
 // --- Global Application State ---
 const APP_STATE = {
-  currentUser: null,           // { name, email, avatar, isGoogleAuth }
+  currentUser: null,           // { name, email, avatar, role, schoolName, grade, classNum, classCode, isTeacher, isSuperAdmin }
   selectedEmotion: null,       // 'joy', 'calm', 'anxious', 'sad', 'angry'
   selectedSubTags: [],
   selectedIntensity: 3,
   selectedCategories: [],
   selectedSticker: '⭐',
   isTeacherMode: false,
+  isSuperAdmin: false,
   currentCalendarDate: new Date(),
-  customClientId: localStorage.getItem('raon_google_client_id') || '',
-  firestoreDiaries: null
+  firestoreDiaries: null,
+  registeredTeachers: [],
+  navigationHistory: ['tab-write'],
+  tempGoogleTeacherEmail: '',
+  tempGoogleTeacherAvatar: ''
 };
 
 // --- Emotion Configuration Data ---
@@ -57,9 +66,9 @@ const EMOTIONS_CONFIG = {
 
 // --- Daily Encouraging Quotes ---
 const DAILY_QUOTES = [
-  "오늘 하루도 라온반에서 가장 빛나는 너를 응원해! 🌟",
+  "오늘 하루도 가장 빛나는 너를 응원해! 🌟",
   "어떤 마음이든 내 안의 귀중한 소리랍니다. 토닥토닥! 💖",
-  "새뜸초 라온반 친구들과 함께 따뜻한 웃음을 나눠보세요 😃",
+  "우리 반 친구들과 함께 따뜻한 웃음을 나눠보세요 😃",
   "너의 아침 생각 하나가 오늘 하루를 멋지게 완성할 거야 🌈",
   "오늘도 나답게, 건강하고 당당하게 출발! 💪"
 ];
@@ -67,7 +76,6 @@ const DAILY_QUOTES = [
 // --- Initialization on DOM Loaded ---
 document.addEventListener('DOMContentLoaded', () => {
   initClock();
-  initAuth();
   initFormListeners();
 
   // Initialize Real-time Firestore Cloud Synchronization
@@ -76,45 +84,47 @@ document.addEventListener('DOMContentLoaded', () => {
       (userObj) => { if (userObj && !APP_STATE.currentUser) setLoggedInUser(userObj); },
       handleCloudDiariesUpdate
     );
+
+    // Subscribe to Teachers Directory for Super Admin
+    if (window.RaonFirebase.subscribeToTeachersFirestore) {
+      window.RaonFirebase.subscribeToTeachersFirestore((teacherList) => {
+        APP_STATE.registeredTeachers = teacherList || [];
+        if (APP_STATE.isSuperAdmin) {
+          renderSuperAdminPanel();
+        }
+      });
+    }
+  }
+
+  // Restore Saved Session from LocalStorage
+  const savedUser = localStorage.getItem('raon_current_user');
+  if (savedUser) {
+    try {
+      const parsed = JSON.parse(savedUser);
+      setLoggedInUser(parsed);
+    } catch (e) {
+      console.error('Error loading saved user:', e);
+    }
+  } else {
+    // Default fallback initial portal prompt
+    updateUserUI();
   }
 
   renderClassWeather();
   renderHistoryCalendar();
-  
-  // Set default state if no user logged in
-  if (!APP_STATE.currentUser) {
-    // Check local storage for persistent login
-    const savedUser = localStorage.getItem('raon_current_user');
-    if (savedUser) {
-      try {
-        APP_STATE.currentUser = JSON.parse(savedUser);
-        updateUserUI();
-      } catch (e) {
-        console.error('Error loading saved user:', e);
-      }
-    }
-  }
 });
 
 // Handle Live Cloud Firestore Real-time Updates
 function handleCloudDiariesUpdate(cloudList) {
-  if (Array.isArray(cloudList) && cloudList.length > 0) {
+  if (Array.isArray(cloudList)) {
     APP_STATE.firestoreDiaries = cloudList;
-    const existingLocal = getStoredDiaries();
-    const map = new Map();
-    existingLocal.forEach(item => { if (item && (item.id || item.title)) map.set(item.id || `${item.date}_${item.time}_${item.title}`, item); });
-    cloudList.forEach(item => { if (item && (item.id || item.title)) map.set(item.id || `${item.date}_${item.time}_${item.title}`, item); });
-    const merged = Array.from(map.values());
-    localStorage.setItem('raon_mind_diaries', JSON.stringify(merged));
-  } else if (cloudList) {
-    APP_STATE.firestoreDiaries = cloudList;
+    localStorage.setItem('raon_mind_diaries', JSON.stringify(cloudList));
   }
-  
+
   renderClassWeather();
   renderHistoryCalendar();
-  if (APP_STATE.isTeacherMode) {
-    renderTeacherFeed();
-  }
+  if (APP_STATE.isTeacherMode) renderTeacherFeed();
+  if (APP_STATE.isSuperAdmin) renderSuperAdminPanel();
 }
 
 // ==========================================================================
@@ -140,228 +150,17 @@ function initClock() {
 }
 
 // ==========================================================================
-// 2. Google OAuth & Authentication System
+// 2. Multi-Class Navigation & Back Button System (Login Session Preserved)
 // ==========================================================================
-function initAuth() {
-  // Initialize Google Identity Services SDK if Client ID exists or default
-  window.onload = function () {
-    if (window.google && window.google.accounts) {
-      window.google.accounts.id.initialize({
-        client_id: APP_STATE.customClientId || "DEMO_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
-        callback: handleGoogleCredentialResponse
-      });
-      window.google.accounts.id.renderButton(
-        document.querySelector(".g_id_signin"),
-        { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" }
-      );
-    }
-  };
-}
-
-// Trigger Google Sign-In Popup Centered Window
-async function handleGooglePopupLogin() {
-  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
-    try {
-      const user = await window.RaonFirebase.loginWithFirebaseGoogle();
-      if (user) {
-        const userObj = {
-          name: user.displayName || '라온반 학생',
-          email: user.email || '',
-          avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.displayName || 'Student')}`,
-          isGoogleAuth: true,
-          isTeacher: user.email && user.email.toLowerCase() === 'gusals0432@gmail.com'
-        };
-        setLoggedInUser(userObj);
-        closeLoginModal();
-        return;
-      }
-    } catch (err) {
-      console.warn("Firebase 팝업 로그인 취소 또는 오류:", err);
+function switchTab(tabId, pushHistory = true) {
+  if (pushHistory) {
+    const lastTab = APP_STATE.navigationHistory[APP_STATE.navigationHistory.length - 1];
+    if (lastTab !== tabId) {
+      APP_STATE.navigationHistory.push(tabId);
     }
   }
-  
-  // Fallback to Login Modal if Popup isn't ready
-  openLoginModal();
-}
-
-// Open / Close Google Login Modal
-function openLoginModal() {
-  document.getElementById('loginModal').classList.remove('hidden');
-}
-
-function closeLoginModal() {
-  document.getElementById('loginModal').classList.add('hidden');
-}
-
-// Parse Google JWT Token callback
-function handleGoogleCredentialResponse(response) {
-  try {
-    const responsePayload = parseJwt(response.credential);
-    console.log("Google User Credential:", responsePayload);
-
-    const userObj = {
-      name: responsePayload.name || responsePayload.given_name || '라온반 학생',
-      email: responsePayload.email || 'student@saettum.es.kr',
-      avatar: responsePayload.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(responsePayload.name)}`,
-      isGoogleAuth: true
-    };
-
-    setLoggedInUser(userObj);
-    closeLoginModal();
-  } catch (err) {
-    console.error("JWT Decode error:", err);
-    alert("구글 로그인 처리 중 오류가 발생했습니다. 시뮬레이션 로그인을 이용해 주세요.");
-  }
-}
-
-// Helper to decode JWT Payload
-function parseJwt(token) {
-  const base64Url = token.split('.')[1];
-  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-  const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-  }).join(''));
-  return JSON.parse(jsonPayload);
-}
-
-// Quick Demo Google Login for Classroom Testing
-function simulateGoogleLogin(name, email, avatar) {
-  const userObj = { name, email, avatar, isGoogleAuth: true };
-  setLoggedInUser(userObj);
-  closeLoginModal();
-}
-
-// Custom Google Email Login Entry
-function handleCustomGoogleLogin() {
-  const nameInput = document.getElementById('customGoogleName').value.trim();
-  const emailInput = document.getElementById('customGoogleEmail').value.trim();
-
-  if (!nameInput || !emailInput) {
-    alert('이름과 구글 이메일을 모두 입력해주세요.');
-    return;
-  }
-
-  const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(nameInput)}`;
-  setLoggedInUser({ name: nameInput, email: emailInput, avatar, isGoogleAuth: true });
-  closeLoginModal();
-}
-
-// Set Active User State & UI
-function setLoggedInUser(userObj) {
-  APP_STATE.currentUser = userObj;
-  localStorage.setItem('raon_current_user', JSON.stringify(userObj));
-  updateUserUI();
-
-  // Trigger positive welcome message
-  if (window.confetti) {
-    window.confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-  }
-}
-
-function updateUserUI() {
-  const btnGoogleLogin = document.getElementById('btnGoogleLogin');
-  const userProfileBadge = document.getElementById('userProfileBadge');
-  const userNameText = document.getElementById('userNameText');
-  const userEmailText = document.getElementById('userEmailText');
-  const userAvatarImg = document.getElementById('userAvatarImg');
-  const greetingStudentName = document.getElementById('greetingStudentName');
-  const btnModeToggle = document.getElementById('btnModeToggle');
-
-  if (APP_STATE.currentUser) {
-    btnGoogleLogin.classList.add('hidden');
-    userProfileBadge.classList.remove('hidden');
-
-    userNameText.textContent = APP_STATE.currentUser.name;
-    userEmailText.textContent = APP_STATE.currentUser.email;
-    userAvatarImg.src = APP_STATE.currentUser.avatar;
-    if (greetingStudentName) greetingStudentName.textContent = APP_STATE.currentUser.name;
-
-    // Check if logged in user is the designated Admin Teacher account (gusals0432@gmail.com)
-    const isTeacherAccount = APP_STATE.currentUser.isTeacher || 
-      (APP_STATE.currentUser.email && APP_STATE.currentUser.email.toLowerCase() === 'gusals0432@gmail.com');
-
-    if (isTeacherAccount) {
-      // Automatically transition to Teacher Admin Mode
-      APP_STATE.isTeacherMode = true;
-      const contents = document.querySelectorAll('.tab-content');
-      contents.forEach(c => c.classList.remove('active'));
-
-      const teacherDash = document.getElementById('tab-teacher-dashboard');
-      if (teacherDash) {
-        teacherDash.classList.remove('hidden');
-        teacherDash.classList.add('active');
-      }
-      renderTeacherFeed();
-    } else {
-      // Non-admin Student Account: Hide Teacher Dashboard & Force Student View
-      APP_STATE.isTeacherMode = false;
-      const teacherDash = document.getElementById('tab-teacher-dashboard');
-      if (teacherDash) teacherDash.classList.add('hidden');
-      switchTab('tab-write');
-    }
-
-    updateStreakCounter();
-  } else {
-    btnGoogleLogin.classList.remove('hidden');
-    userProfileBadge.classList.add('hidden');
-    if (btnModeToggle) btnModeToggle.classList.add('hidden');
-    if (greetingStudentName) greetingStudentName.textContent = '라온반 학생';
-  }
-}
-
-function switchToTeacherLoginModal() {
-  closeLoginModal();
-  document.getElementById('teacherAuthModal').classList.remove('hidden');
-}
-
-function handleLogout() {
-  if (confirm('로그아웃 하시겠습니까?')) {
-    APP_STATE.currentUser = null;
-    APP_STATE.isTeacherMode = false;
-    localStorage.removeItem('raon_current_user');
-    document.getElementById('tab-teacher-dashboard').classList.add('hidden');
-    switchTab('tab-write');
-    updateUserUI();
-  }
-}
-
-function saveClientId() {
-  const val = document.getElementById('inputClientId').value.trim();
-  if (val) {
-    localStorage.setItem('raon_google_client_id', val);
-    APP_STATE.customClientId = val;
-    alert('구글 OAuth Client ID가 저장되었습니다. 페이지를 새로고침합니다.');
-    location.reload();
-  }
-}
-
-function saveFirebaseConfig() {
-  const jsonStr = document.getElementById('inputFirebaseConfigJson').value.trim();
-  if (!jsonStr) return;
-  try {
-    const parsed = JSON.parse(jsonStr);
-    if (!parsed.apiKey || !parsed.projectId) {
-      alert('올바른 Firebase Config JSON 형식이 아닙니다 (apiKey, projectId 필수).');
-      return;
-    }
-    localStorage.setItem('raon_firebase_config', JSON.stringify(parsed));
-    alert('🔥 Firebase 프로젝트 연동 설정이 성공적으로 저장되었습니다! 웹 앱을 새로고침합니다.');
-    location.reload();
-  } catch (e) {
-    alert('JSON 파싱 오류: JSON 형식을 올바르게 입력해 주세요.\n예: {"apiKey":"...", "projectId":"..."}');
-  }
-}
-
-// ==========================================================================
-// 3. Tab Navigation & View Switcher
-// ==========================================================================
-function switchTab(tabId) {
-  // Hide teacher dashboard if open
-  document.getElementById('tab-teacher-dashboard').classList.add('hidden');
 
   const tabs = document.querySelectorAll('.nav-tab');
-  const contents = document.querySelectorAll('.tab-content');
-
   tabs.forEach(t => {
     if (t.getAttribute('data-tab') === tabId) {
       t.classList.add('active');
@@ -370,8 +169,10 @@ function switchTab(tabId) {
     }
   });
 
+  const contents = document.querySelectorAll('.tab-content');
   contents.forEach(c => {
     if (c.id === tabId) {
+      c.classList.remove('hidden');
       c.classList.add('active');
     } else {
       c.classList.remove('active');
@@ -380,20 +181,292 @@ function switchTab(tabId) {
 
   if (tabId === 'tab-class-weather') renderClassWeather();
   if (tabId === 'tab-history') renderHistoryCalendar();
+  if (tabId === 'tab-teacher-dashboard') renderTeacherFeed();
+  if (tabId === 'tab-super-admin') renderSuperAdminPanel();
+}
+
+// Smart Back Navigation (Preserves User Login Session Always!)
+function goBack() {
+  if (APP_STATE.navigationHistory.length > 1) {
+    APP_STATE.navigationHistory.pop(); // Remove current view
+    const previousTab = APP_STATE.navigationHistory[APP_STATE.navigationHistory.length - 1];
+    switchTab(previousTab, false);
+  } else {
+    // If stack is at top, always go back to main first page ('tab-write')
+    switchTab('tab-write', false);
+  }
 }
 
 // ==========================================================================
-// 4. Emotion Selection Logic (Representative 5 Emotions)
+// 3. User Session & Login UI Management
+// ==========================================================================
+function setLoggedInUser(userObj) {
+  if (!userObj) return;
+
+  // Check if Super Admin (gusals0432@gmail.com)
+  const isSuperAdminEmail = userObj.email && userObj.email.toLowerCase().trim() === 'gusals0432@gmail.com';
+  
+  if (isSuperAdminEmail) {
+    userObj.isSuperAdmin = true;
+    userObj.isTeacher = true;
+    userObj.role = 'super_admin';
+    userObj.schoolName = userObj.schoolName || '새뜸초등학교';
+    userObj.grade = userObj.grade || '6';
+    userObj.classNum = userObj.classNum || '1';
+    userObj.classCode = userObj.classCode || 'MASTER-ADMIN';
+  }
+
+  APP_STATE.currentUser = userObj;
+  APP_STATE.isTeacherMode = !!(userObj.isTeacher || userObj.isSuperAdmin);
+  APP_STATE.isSuperAdmin = !!isSuperAdminEmail;
+
+  localStorage.setItem('raon_current_user', JSON.stringify(userObj));
+  updateUserUI();
+
+  if (window.confetti) {
+    window.confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+  }
+}
+
+function updateUserUI() {
+  const btnPortalOpen = document.getElementById('btnPortalOpen');
+  const userProfileBadge = document.getElementById('userProfileBadge');
+  const userNameText = document.getElementById('userNameText');
+  const userEmailText = document.getElementById('userEmailText');
+  const userAvatarImg = document.getElementById('userAvatarImg');
+  const greetingStudentName = document.getElementById('greetingStudentName');
+  const welcomeSubText = document.getElementById('welcomeSubText');
+
+  const tabTeacherNav = document.getElementById('tabTeacherNav');
+  const tabSuperAdminNav = document.getElementById('tabSuperAdminNav');
+
+  const headerSchoolTitle = document.getElementById('headerSchoolTitle');
+  const headerClassSubTitle = document.getElementById('headerClassSubTitle');
+  const tabClassWeatherText = document.getElementById('tabClassWeatherText');
+
+  if (APP_STATE.currentUser) {
+    btnPortalOpen.classList.add('hidden');
+    userProfileBadge.classList.remove('hidden');
+
+    const roleTag = APP_STATE.isSuperAdmin ? '👑 최종관리자' : (APP_STATE.currentUser.isTeacher ? '👩‍🏫 담임교사' : '👨‍🎓 학생');
+    const classInfoTag = APP_STATE.currentUser.classCode ? ` | ${APP_STATE.currentUser.schoolName || ''} ${APP_STATE.currentUser.grade || ''}-${APP_STATE.currentUser.classNum || ''} (코드:${APP_STATE.currentUser.classCode})` : '';
+
+    userNameText.textContent = `${APP_STATE.currentUser.name} (${roleTag})`;
+    userEmailText.textContent = (APP_STATE.currentUser.email || '') + classInfoTag;
+    userAvatarImg.src = APP_STATE.currentUser.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(APP_STATE.currentUser.name)}`;
+
+    if (greetingStudentName) greetingStudentName.textContent = APP_STATE.currentUser.name;
+    if (welcomeSubText) welcomeSubText.textContent = `${APP_STATE.currentUser.schoolName || ''} ${APP_STATE.currentUser.grade || ''}학년 ${APP_STATE.currentUser.classNum || ''}반 교실의 아침 감정을 기록하세요.`;
+
+    if (headerSchoolTitle) headerSchoolTitle.textContent = APP_STATE.currentUser.schoolName ? `${APP_STATE.currentUser.schoolName} ${APP_STATE.currentUser.grade}-${APP_STATE.currentUser.classNum}` : '전국 아침 마음 일기장';
+    if (headerClassSubTitle) headerClassSubTitle.textContent = `코드: ${APP_STATE.currentUser.classCode || '통합'} · 아침 마음 일기장`;
+    if (tabClassWeatherText) tabClassWeatherText.textContent = `${APP_STATE.currentUser.grade || ''}-${APP_STATE.currentUser.classNum || ''}반 마음 날씨`;
+
+    // Show/Hide Teacher Dashboard & Super Admin Tabs based on role
+    if (APP_STATE.isSuperAdmin) {
+      if (tabTeacherNav) tabTeacherNav.classList.remove('hidden');
+      if (tabSuperAdminNav) tabSuperAdminNav.classList.remove('hidden');
+    } else if (APP_STATE.isTeacherMode) {
+      if (tabTeacherNav) tabTeacherNav.classList.remove('hidden');
+      if (tabSuperAdminNav) tabSuperAdminNav.classList.add('hidden');
+    } else {
+      if (tabTeacherNav) tabTeacherNav.classList.add('hidden');
+      if (tabSuperAdminNav) tabSuperAdminNav.classList.add('hidden');
+    }
+
+    updateStreakCounter();
+  } else {
+    btnPortalOpen.classList.remove('hidden');
+    userProfileBadge.classList.add('hidden');
+    if (tabTeacherNav) tabTeacherNav.classList.add('hidden');
+    if (tabSuperAdminNav) tabSuperAdminNav.classList.add('hidden');
+    if (greetingStudentName) greetingStudentName.textContent = '학생';
+  }
+}
+
+function handleLogout() {
+  if (confirm('로그아웃 하시겠습니까? 세션이 해제되고 메인 포털 화면으로 이동합니다.')) {
+    APP_STATE.currentUser = null;
+    APP_STATE.isTeacherMode = false;
+    APP_STATE.isSuperAdmin = false;
+    localStorage.removeItem('raon_current_user');
+    
+    if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+      window.RaonFirebase.logoutFirebase().catch(e => console.warn(e));
+    }
+
+    updateUserUI();
+    openLoginPortalModal();
+  }
+}
+
+// ==========================================================================
+// 4. Portal Modals & Role Sign-in Handling
+// ==========================================================================
+function openLoginPortalModal() {
+  document.getElementById('loginPortalModal').classList.remove('hidden');
+}
+
+function closeLoginPortalModal() {
+  document.getElementById('loginPortalModal').classList.add('hidden');
+}
+
+function openStudentLoginModal() {
+  closeLoginPortalModal();
+  document.getElementById('studentLoginModal').classList.remove('hidden');
+}
+
+function closeStudentLoginModal() {
+  document.getElementById('studentLoginModal').classList.add('hidden');
+}
+
+function openTeacherSignupModal() {
+  closeLoginPortalModal();
+  document.getElementById('teacherSignupModal').classList.remove('hidden');
+}
+
+function closeTeacherSignupModal() {
+  document.getElementById('teacherSignupModal').classList.add('hidden');
+}
+
+function openTeacherCodeWelcomeModal() {
+  document.getElementById('teacherCodeWelcomeModal').classList.remove('hidden');
+}
+
+function closeTeacherCodeWelcomeModal() {
+  document.getElementById('teacherCodeWelcomeModal').classList.add('hidden');
+  switchTab('tab-teacher-dashboard');
+}
+
+// Helper function to generate unique Class Code (e.g. SAET-601-X82)
+function generateClassCode(schoolName, grade, classNum) {
+  let prefix = 'RAON';
+  if (schoolName) {
+    const clean = schoolName.replace(/초등학교|초/g, '').trim();
+    prefix = clean.substring(0, 3).toUpperCase() || 'RAON';
+  }
+  const randSuffix = Math.floor(100 + Math.random() * 900);
+  return `${prefix}-${grade}0${classNum}-${randSuffix}`;
+}
+
+// Student Login Submission (Real Name & Class Code Verification)
+function handleStudentLoginSubmit(e) {
+  e.preventDefault();
+  const schoolName = document.getElementById('studentSchoolInput').value.trim();
+  const grade = document.getElementById('studentGradeSelect').value;
+  const classNum = document.getElementById('studentClassSelect').value;
+  const realName = document.getElementById('studentNameInput').value.trim();
+  const classCode = document.getElementById('studentClassCodeInput').value.trim().toUpperCase();
+
+  if (!schoolName || !realName || !classCode) {
+    alert('학교명, 학생 실명, 그리고 선생님께 받은 학급 코드를 모두 입력해 주세요.');
+    return;
+  }
+
+  if (realName.length < 2) {
+    alert('⚠️ 닉네임 사용은 금지됩니다. 2글자 이상의 실명을 정확히 입력해 주세요.');
+    return;
+  }
+
+  const userObj = {
+    name: realName,
+    email: `student_${Date.now()}@${classCode.toLowerCase()}.es.kr`,
+    avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(realName)}`,
+    role: 'student',
+    schoolName: schoolName,
+    grade: grade,
+    classNum: classNum,
+    classCode: classCode,
+    isGoogleAuth: false
+  };
+
+  setLoggedInUser(userObj);
+  closeStudentLoginModal();
+  alert(`👋 ${schoolName} ${grade}학년 ${classNum}반 ${realName} 학생님 환영합니다!`);
+  switchTab('tab-write');
+}
+
+// Teacher Google Login Trigger for Signup
+async function handleTeacherGoogleAuth() {
+  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+    try {
+      const user = await window.RaonFirebase.loginWithFirebaseGoogle();
+      if (user) {
+        APP_STATE.tempGoogleTeacherEmail = user.email || '';
+        APP_STATE.tempGoogleTeacherAvatar = user.photoURL || '';
+        document.getElementById('teacherNameInput').value = user.displayName || '';
+        document.getElementById('teacherGoogleBtnText').textContent = `✅ 구글 인증 완료 (${user.email})`;
+        alert(`구글 계정(${user.email}) 인증에 성공했습니다! 소속 학교 및 학반 정보를 입력 후 학반 생성을 완료해 주세요.`);
+        return;
+      }
+    } catch (err) {
+      console.warn("Teacher Google auth popup error:", err);
+    }
+  }
+}
+
+// Teacher Signup & Auto Class Code Generation Submission
+function handleTeacherSignupSubmit(e) {
+  e.preventDefault();
+  const schoolName = document.getElementById('teacherSchoolInput').value.trim();
+  const grade = document.getElementById('teacherGradeSelect').value;
+  const classNum = document.getElementById('teacherClassSelect').value;
+  const realName = document.getElementById('teacherNameInput').value.trim();
+
+  if (!schoolName || !realName) {
+    alert('학교명과 담임 교사 실명을 모두 입력해 주세요.');
+    return;
+  }
+
+  const generatedCode = generateClassCode(schoolName, grade, classNum);
+  const teacherEmail = APP_STATE.tempGoogleTeacherEmail || `teacher_${Date.now()}@${schoolName.toLowerCase()}.es.kr`;
+
+  const teacherUser = {
+    name: realName + ' 선생님',
+    email: teacherEmail,
+    avatar: APP_STATE.tempGoogleTeacherAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(realName)}`,
+    role: 'teacher',
+    isTeacher: true,
+    schoolName: schoolName,
+    grade: grade,
+    classNum: classNum,
+    classCode: generatedCode,
+    status: 'approved' // 즉시 자동 승인
+  };
+
+  // Register Teacher & Class to Firestore
+  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+    window.RaonFirebase.registerTeacherAndClass(teacherUser).catch(err => console.warn(err));
+  }
+
+  setLoggedInUser(teacherUser);
+  closeTeacherSignupModal();
+
+  // Show Welcome Modal with generated Class Code
+  document.getElementById('displayGeneratedClassCode').textContent = generatedCode;
+  document.getElementById('teacherCodeWelcomeText').textContent = `${schoolName} ${grade}학년 ${classNum}반 (${realName} 선생님) 학반이 즉시 자동 승인 생성되었습니다. 아래 초대 코드를 학생들에게 공유하세요!`;
+  openTeacherCodeWelcomeModal();
+}
+
+function copyGeneratedClassCode() {
+  const code = document.getElementById('displayGeneratedClassCode').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => alert(`📋 학급 초대 코드 [ ${code} ]가 클립보드에 복사되었습니다!\n학생들에게 전달하여 학급 접속에 사용하게 해주세요.`));
+  } else {
+    alert(`📋 초대 코드: ${code}`);
+  }
+}
+
+// ==========================================================================
+// 5. Emotion Selection & Form Submission Logic
 // ==========================================================================
 function selectEmotion(emotionKey) {
   APP_STATE.selectedEmotion = emotionKey;
   const config = EMOTIONS_CONFIG[emotionKey];
   if (!config) return;
 
-  // 1. Update Body Theme Attribute for dynamic background glow
   document.body.setAttribute('data-theme', config.theme);
 
-  // 2. Emotion Card Selection Highlights
   const cards = document.querySelectorAll('.emotion-card');
   cards.forEach(card => {
     if (card.getAttribute('data-emotion') === emotionKey) {
@@ -403,65 +476,63 @@ function selectEmotion(emotionKey) {
     }
   });
 
-  // 3. Show Detail Sub-Tags & Intensity Box
   const detailBox = document.getElementById('emotionDetailBox');
   detailBox.classList.remove('hidden');
 
-  // Render Sub-Tags
+  renderSubTags(config.subTags);
+
+  const promptEl = document.getElementById('emotionPromptText');
+  if (promptEl) promptEl.textContent = config.prompt;
+
+  detailBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderSubTags(tagsList) {
   const container = document.getElementById('subTagsContainer');
+  if (!container) return;
   container.innerHTML = '';
   APP_STATE.selectedSubTags = [];
 
-  config.subTags.forEach(tag => {
+  tagsList.forEach(tagText => {
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'sub-tag-chip';
-    chip.textContent = tag;
-    chip.onclick = () => toggleSubTag(chip, tag);
+    chip.textContent = tagText;
+    chip.onclick = () => {
+      chip.classList.toggle('selected');
+      if (chip.classList.contains('selected')) {
+        APP_STATE.selectedSubTags.push(tagText);
+      } else {
+        APP_STATE.selectedSubTags = APP_STATE.selectedSubTags.filter(t => t !== tagText);
+      }
+    };
     container.appendChild(chip);
   });
-
-  // 4. Update Dynamic Question Prompt Text
-  const questionEl = document.getElementById('promptQuestionText');
-  if (questionEl) {
-    questionEl.textContent = config.prompt;
-  }
 }
 
-function toggleSubTag(btn, tag) {
-  if (btn.classList.contains('active')) {
-    btn.classList.remove('active');
-    APP_STATE.selectedSubTags = APP_STATE.selectedSubTags.filter(t => t !== tag);
-  } else {
-    btn.classList.add('active');
-    APP_STATE.selectedSubTags.push(tag);
-  }
-}
-
-function updateIntensityText(val) {
+function updateIntensity(val) {
   APP_STATE.selectedIntensity = parseInt(val, 10);
-  const labels = ['', '1단계 (약간이에요)', '2단계 (조금 느껴져요)', '3단계 (보통이에요)', '4단계 (꽤 커요!)', '5단계 (매우 가득해요!!)'];
-  const el = document.getElementById('intensityText');
-  if (el) el.textContent = labels[val] || `${val}단계`;
+  const labels = ['1단계 (살짝 느껴져요)', '2단계 (조금 느껴져요)', '3단계 (적당히 느껴져요)', '4단계 (꽤 강하게 느껴져요)', '5단계 (아주 가득 차 있어요!)'];
+  const textEl = document.getElementById('intensityLabelText');
+  if (textEl) textEl.textContent = labels[val - 1] || `${val}단계`;
 }
 
-// Category Chips toggle
-function toggleCatChip(btn, catName) {
-  if (btn.classList.contains('active')) {
-    btn.classList.remove('active');
-    APP_STATE.selectedCategories = APP_STATE.selectedCategories.filter(c => c !== catName);
+function toggleCatChip(btn, categoryName) {
+  btn.classList.toggle('selected');
+  if (btn.classList.contains('selected')) {
+    if (!APP_STATE.selectedCategories.includes(categoryName)) {
+      APP_STATE.selectedCategories.push(categoryName);
+    }
   } else {
-    btn.classList.add('active');
-    APP_STATE.selectedCategories.push(catName);
+    APP_STATE.selectedCategories = APP_STATE.selectedCategories.filter(c => c !== categoryName);
   }
 }
 
-// Sticker selector
-function selectSticker(sticker) {
-  APP_STATE.selectedSticker = sticker;
+function selectSticker(stickerChar) {
+  APP_STATE.selectedSticker = stickerChar;
   const btns = document.querySelectorAll('.sticker-btn');
   btns.forEach(b => {
-    if (b.textContent.includes(sticker)) {
+    if (b.textContent.includes(stickerChar)) {
       b.classList.add('active');
     } else {
       b.classList.remove('active');
@@ -469,34 +540,28 @@ function selectSticker(sticker) {
   });
 }
 
-// Character counter
 function initFormListeners() {
   const contentArea = document.getElementById('diaryContent');
   const countEl = document.getElementById('charCount');
-
   if (contentArea && countEl) {
-    contentArea.addEventListener('input', (e) => {
-      countEl.textContent = e.target.value.length;
+    contentArea.addEventListener('input', () => {
+      countEl.textContent = contentArea.value.length;
     });
   }
 }
 
-// ==========================================================================
-// 5. Mind Diary Form Submission & LocalStorage Persistence
-// ==========================================================================
+// Diary Submission Handler
 function handleDiarySubmit(e) {
   e.preventDefault();
 
-  // Check login status
   if (!APP_STATE.currentUser) {
-    alert('구글 계정 로그인 후 일기를 작성해 주세요!');
-    openLoginModal();
+    alert('일기 작성을 위해 먼저 학생 또는 교사 계정으로 로그인해 주세요.');
+    openLoginPortalModal();
     return;
   }
 
-  // Check emotion selection
   if (!APP_STATE.selectedEmotion) {
-    alert('오늘 아침 대표 감정 1가지를 먼저 선택해 주세요!');
+    alert('상단의 5가지 대표 감정 중 하나를 선택해 주세요!');
     return;
   }
 
@@ -506,28 +571,27 @@ function handleDiarySubmit(e) {
   const teacherOnly = document.getElementById('chkTeacherOnly').checked;
 
   if (!title || !content) {
-    alert('제목과 일기 내용을 입력해 주세요.');
+    alert('일기 제목과 솔직한 이야기를 모두 작성해 주세요.');
     return;
   }
 
-  function getTodayDateString() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
+  const now = new Date();
+  const todayStr = getTodayDateString();
+  const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
-// Build Diary Entry Object
   const entry = {
-    id: 'entry_' + Date.now(),
-    date: getTodayDateString(),
-    time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+    id: `entry_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+    date: todayStr,
+    time: timeStr,
     user: {
       name: APP_STATE.currentUser.name,
       email: APP_STATE.currentUser.email,
-      avatar: APP_STATE.currentUser.avatar
+      avatar: APP_STATE.currentUser.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(APP_STATE.currentUser.name)}`
     },
+    schoolName: APP_STATE.currentUser.schoolName || '새뜸초등학교',
+    grade: APP_STATE.currentUser.grade || '6',
+    classNum: APP_STATE.currentUser.classNum || '1',
+    classCode: APP_STATE.currentUser.classCode || 'RAON-601',
     emotion: APP_STATE.selectedEmotion,
     subTags: APP_STATE.selectedSubTags,
     intensity: APP_STATE.selectedIntensity,
@@ -537,29 +601,26 @@ function handleDiarySubmit(e) {
     sticker: APP_STATE.selectedSticker,
     shareClass: shareClass,
     teacherOnly: teacherOnly,
-    teacherComment: null,
-    cheersCount: 0
+    cheersCount: 0,
+    createdTimestamp: now.toISOString()
   };
 
-  // Save to Firebase Firestore if connected
-  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
-    window.RaonFirebase.saveDiaryToFirestore(entry).then((docId) => {
-      console.log("🔥 Firebase 클라우드 DB 저장 성공! DocID:", docId);
-    }).catch(err => {
-      console.error("❌ Firestore 클라우드 저장 실패:", err);
-      alert('⚠️ [Firebase 구글 콘솔 설정 필요]\n클라우드 DB 저장 권한이 차단되었습니다.\nFirebase 웹 콘솔(console.firebase.google.com) > Firestore Database > Rules(규칙) 탭에서 allow read, write: if true; 게시를 적용해 주세요!');
-    });
-  }
-
-  // Save to LocalStorage Fallback
+  // Save to LocalStorage
   const diaries = getStoredDiaries();
   diaries.unshift(entry);
   localStorage.setItem('raon_mind_diaries', JSON.stringify(diaries));
 
-  // Trigger celebration confetti
-  if (window.confetti) {
-    window.confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
+  // Save to Firestore Cloud
+  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+    window.RaonFirebase.saveDiaryToFirestore(entry).catch(err => {
+      console.warn("Firestore 저장 예외:", err);
+    });
   }
+
+  // Reset Form
+  document.getElementById('diaryForm').reset();
+  APP_STATE.selectedEmotion = null;
+  document.getElementById('emotionDetailBox').classList.add('hidden');
 
   // Show Success Modal
   showSuccessModal();
@@ -578,10 +639,7 @@ function getStoredDiaries() {
     ? APP_STATE.firestoreDiaries 
     : [];
 
-  // Merge cloud & local diaries avoiding duplicates by ID or timestamp+title
   const combinedMap = new Map();
-  
-  // 1. Local storage entries first
   localDiaries.forEach(d => {
     if (d && (d.id || d.title)) {
       const key = d.id || `${d.date}_${d.time}_${d.title}`;
@@ -589,7 +647,6 @@ function getStoredDiaries() {
     }
   });
 
-  // 2. Cloud entries (override / merge)
   cloudDiaries.forEach(d => {
     if (d && (d.id || d.title)) {
       const key = d.id || `${d.date}_${d.time}_${d.title}`;
@@ -607,74 +664,78 @@ function getStoredDiaries() {
   return mergedList;
 }
 
-// Initial Data (Empty for production)
-function getInitialMockDiaries() {
-  return [];
-}
-
 function showSuccessModal() {
   const modal = document.getElementById('successModal');
   const quoteEl = document.getElementById('dailyQuoteText');
-  const randomQuote = DAILY_QUOTES[Math.floor(Math.random() * DAILY_QUOTES.length)];
-  if (quoteEl) quoteEl.textContent = randomQuote;
+  const randQuote = DAILY_QUOTES[Math.floor(Math.random() * DAILY_QUOTES.length)];
+  if (quoteEl) quoteEl.textContent = `"${randQuote}"`;
 
   modal.classList.remove('hidden');
+
+  if (window.confetti) {
+    window.confetti({ particleCount: 70, spread: 80, origin: { y: 0.5 } });
+  }
 }
 
 function closeSuccessModalAndGoToWeather() {
   document.getElementById('successModal').classList.add('hidden');
-  
-  // Reset Form
-  document.getElementById('diaryForm').reset();
-  document.getElementById('emotionDetailBox').classList.add('hidden');
-  APP_STATE.selectedEmotion = null;
-  const cards = document.querySelectorAll('.emotion-card');
-  cards.forEach(c => c.classList.remove('selected'));
-
-  // Switch to Class Weather Tab
   switchTab('tab-class-weather');
 }
 
-function updateStreakCounter() {
-  const streakEl = document.getElementById('streakCount');
-  if (!streakEl) return;
-  
-  const diaries = getStoredDiaries();
-  if (!APP_STATE.currentUser) return;
+function getTodayDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-  const userEntries = diaries.filter(d => d.user.email === APP_STATE.currentUser.email);
-  const uniqueDates = new Set(userEntries.map(e => e.date));
-  streakEl.textContent = Math.max(1, uniqueDates.size);
+// Helper to escape HTML text
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 // ==========================================================================
-// 6. Classroom Morning Weather & Aggregate Visualizer
+// 6. Classroom Weather & Class Data Filtering
 // ==========================================================================
 function renderClassWeather() {
   const diaries = getStoredDiaries();
-  const todayStr = getTodayDateString();
-  const utcTodayStr = new Date().toISOString().split('T')[0];
+  const user = APP_STATE.currentUser;
 
-  const todayDiaries = diaries.filter(d => {
+  // Filter diaries for CURRENT CLASS ONLY
+  const classDiaries = diaries.filter(d => {
+    if (!d) return false;
     const isShared = (d.teacherOnly !== true && d.teacherOnly !== 'true');
-    return isShared;
+    if (!isShared) return false;
+
+    // Filter by Class Code or School-Grade-ClassNum
+    if (user && user.classCode) {
+      return d.classCode === user.classCode || (d.schoolName === user.schoolName && d.grade === user.grade && d.classNum === user.classNum);
+    }
+    return true; // Default show all if public demo
   });
 
   const counts = { joy: 0, calm: 0, anxious: 0, sad: 0, angry: 0 };
-  todayDiaries.forEach(d => {
+  classDiaries.forEach(d => {
     if (counts[d.emotion] !== undefined) counts[d.emotion]++;
   });
 
-  const total = todayDiaries.length || 1; // Prevent div by 0
+  const total = classDiaries.length || 1;
 
-  // Update Stat Badge Cards
+  // Update Stat Cards
   document.getElementById('statJoyCount').textContent = `${counts.joy}명 (${Math.round(counts.joy/total*100)}%)`;
   document.getElementById('statCalmCount').textContent = `${counts.calm}명 (${Math.round(counts.calm/total*100)}%)`;
   document.getElementById('statAnxiousCount').textContent = `${counts.anxious}명 (${Math.round(counts.anxious/total*100)}%)`;
   document.getElementById('statSadCount').textContent = `${counts.sad}명 (${Math.round(counts.sad/total*100)}%)`;
   document.getElementById('statAngryCount').textContent = `${counts.angry}명 (${Math.round(counts.angry/total*100)}%)`;
 
-  // Render Stacked Bar Progress Chart
+  // Render Bar Chart
   const barContainer = document.getElementById('stackedBarContainer');
   if (barContainer) {
     barContainer.innerHTML = '';
@@ -695,14 +756,14 @@ function renderClassWeather() {
   if (feedGrid) {
     feedGrid.innerHTML = '';
 
-    if (todayDiaries.length === 0) {
-      feedGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 30px; color: #94a3b8;">아직 오늘 공유된 라온반 일기가 없습니다. 첫 번째 일기를 작성해 보세요! 🌟</div>`;
+    if (classDiaries.length === 0) {
+      feedGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 30px; color: #94a3b8;">아직 우리 반에 공유된 마음 일기가 없습니다. 첫 번째 일기를 공유해보세요! 🌟</div>`;
       return;
     }
 
-    todayDiaries.forEach(entry => {
+    classDiaries.forEach(entry => {
       if (!entry) return;
-      const userName = (entry.user && entry.user.name) || entry.userName || '라온반 학생';
+      const userName = (entry.user && entry.user.name) || entry.userName || '학생';
       const userAvatar = (entry.user && entry.user.avatar) || entry.userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userName)}`;
       const emotionData = EMOTIONS_CONFIG[entry.emotion] || EMOTIONS_CONFIG.joy;
 
@@ -740,12 +801,11 @@ function handleCheer(entryId, btn) {
     diaries[idx].cheersCount = (diaries[idx].cheersCount || 0) + 1;
     localStorage.setItem('raon_mind_diaries', JSON.stringify(diaries));
     btn.innerHTML = `<i class="fa-solid fa-heart" style="color: #ef4444;"></i> 응원해요 (${diaries[idx].cheersCount})`;
-  }
-}
 
-// Helper to escape HTML tags for security
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+      window.RaonFirebase.addCheerToFirestore(entryId).catch(e => console.warn(e));
+    }
+  }
 }
 
 // ==========================================================================
@@ -755,47 +815,48 @@ function renderHistoryCalendar() {
   const monthTitle = document.getElementById('calendarMonthTitle');
   const grid = document.getElementById('calendarDaysGrid');
   const historyList = document.getElementById('historyListContainer');
-
   if (!grid) return;
 
   const year = APP_STATE.currentCalendarDate.getFullYear();
   const month = APP_STATE.currentCalendarDate.getMonth();
 
-  if (monthTitle) {
-    monthTitle.textContent = `${year}년 ${month + 1}월`;
-  }
-
-  // Get days in month
-  const firstDay = new Date(year, month, 1).getDay();
-  const lastDate = new Date(year, month + 1, 0).getDate();
-
-  const diaries = getStoredDiaries();
-  const userDiaries = APP_STATE.currentUser 
-    ? diaries.filter(d => d.user.email === APP_STATE.currentUser.email)
-    : diaries;
+  if (monthTitle) monthTitle.textContent = `${year}년 ${month + 1}월`;
 
   grid.innerHTML = '';
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Blank cells for previous month
   for (let i = 0; i < firstDay; i++) {
-    const blank = document.createElement('div');
-    blank.className = 'calendar-day-cell other-month';
-    grid.appendChild(blank);
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'calendar-day empty';
+    grid.appendChild(emptyCell);
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const diaries = getStoredDiaries();
+  const user = APP_STATE.currentUser;
 
-  // Current Month Days
-  for (let dateNum = 1; dateNum <= lastDate; dateNum++) {
+  const userDiaries = diaries.filter(d => {
+    if (!d || !user) return true;
+    return (d.user && d.user.email === user.email) || (d.user && d.user.name === user.name);
+  });
+
+  const todayStr = getTodayDateString();
+
+  for (let day = 1; day <= daysInMonth; day++) {
     const dayCell = document.createElement('div');
-    const dateFormatted = `${year}-${String(month + 1).padStart(2, '0')}-${String(dateNum).padStart(2, '0')}`;
+    dayCell.className = 'calendar-day';
     
-    dayCell.className = 'calendar-day-cell';
-    if (dateFormatted === todayStr) dayCell.classList.add('today');
+    const dayFormatted = String(day).padStart(2, '0');
+    const monthFormatted = String(month + 1).padStart(2, '0');
+    const dateFormatted = `${year}-${monthFormatted}-${dayFormatted}`;
+
+    if (dateFormatted === todayStr) {
+      dayCell.classList.add('today');
+    }
+
+    dayCell.innerHTML = `<span class="day-number">${day}</span>`;
 
     const entryForDay = userDiaries.find(d => d.date === dateFormatted);
-
-    dayCell.innerHTML = `<span class="day-number">${dateNum}</span>`;
     if (entryForDay) {
       const emo = EMOTIONS_CONFIG[entryForDay.emotion] || EMOTIONS_CONFIG.joy;
       dayCell.innerHTML += `<div class="day-emotion-badge" title="${entryForDay.title}">${emo.emoji}</div>`;
@@ -805,7 +866,6 @@ function renderHistoryCalendar() {
     grid.appendChild(dayCell);
   }
 
-  // Render Recent Entries List below calendar
   if (historyList) {
     historyList.innerHTML = '';
     if (userDiaries.length === 0) {
@@ -820,7 +880,7 @@ function renderHistoryCalendar() {
       item.className = 'history-card';
       item.style.cssText = "display: flex; align-items: center; justify-content: space-between; padding: 14px; background: #ffffff; border-radius: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);";
       
-      const isMyEntry = APP_STATE.currentUser && e.user && (e.user.email === APP_STATE.currentUser.email);
+      const isMyEntry = APP_STATE.currentUser && e.user && (e.user.email === APP_STATE.currentUser.email || e.user.name === APP_STATE.currentUser.name);
 
       item.innerHTML = `
         <div style="display: flex; align-items: center; gap: 14px;">
@@ -845,22 +905,15 @@ function renderHistoryCalendar() {
   }
 }
 
-// User Self Delete Entry
 function deleteDiaryByUser(entryId, title) {
   if (!confirm(`[본인 확인] 내가 작성한 마음일기 "${title}"을(를) 정말 삭제하시겠습니까?`)) {
     return;
   }
 
-  // Delete from Firestore
   if (window.RaonFirebase && window.RaonFirebase.isReady()) {
-    window.RaonFirebase.deleteDiaryFromFirestore(entryId).then(() => {
-      console.log("🔥 Firestore 본인 작성 일기 클라우드 삭제 완료 ID:", entryId);
-    }).catch(err => {
-      console.warn("Firestore 삭제 실패:", err);
-    });
+    window.RaonFirebase.deleteDiaryFromFirestore(entryId).catch(err => console.warn(err));
   }
 
-  // Delete from in-memory state & local storage
   if (APP_STATE.firestoreDiaries && Array.isArray(APP_STATE.firestoreDiaries)) {
     APP_STATE.firestoreDiaries = APP_STATE.firestoreDiaries.filter(d => d.id !== entryId);
   }
@@ -873,7 +926,7 @@ function deleteDiaryByUser(entryId, title) {
   renderClassWeather();
   if (APP_STATE.isTeacherMode) renderTeacherFeed();
 
-  alert('내가 작성한 마음일기가 완전히 삭제되었습니다.');
+  alert('내가 작성한 마음일기가 삭제되었습니다.');
 }
 
 function changeMonth(delta) {
@@ -881,110 +934,60 @@ function changeMonth(delta) {
   renderHistoryCalendar();
 }
 
+function updateStreakCounter() {
+  const countEl = document.getElementById('streakCount');
+  if (countEl) countEl.textContent = '1';
+}
+
 // ==========================================================================
 // 8. Teacher Dashboard Mode
 // ==========================================================================
-function toggleTeacherMode() {
-  if (APP_STATE.isTeacherMode) {
-    // Switch back to Student mode
-    APP_STATE.isTeacherMode = false;
-    document.getElementById('tab-teacher-dashboard').classList.add('hidden');
-    document.getElementById('modeToggleText').textContent = '선생님 모드';
-    switchTab('tab-write');
-  } else {
-    // Open Teacher Auth Modal
-    document.getElementById('teacherAuthModal').classList.remove('hidden');
-  }
-}
-
-function closeTeacherAuthModal() {
-  document.getElementById('teacherAuthModal').classList.add('hidden');
-}
-
-// Teacher Admin Login with ID & Password
-function handleTeacherAdminLogin(e) {
-  e.preventDefault();
-  const idVal = document.getElementById('teacherIdInput').value.trim();
-  const pwVal = document.getElementById('teacherPasswordInput').value.trim();
-
-  if (!idVal || !pwVal) {
-    alert('선생님 관리자 아이디와 비밀번호를 모두 입력해 주세요.');
-    return;
-  }
-
-  // Admin / Teacher Credentials validation
-  if (pwVal === '1234' || pwVal === 'admin' || pwVal === 'teacher' || pwVal.length >= 4) {
-    const teacherUser = {
-      name: '담임선생님 (관리자)',
-      email: 'gusals0432@gmail.com',
-      avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Teacher',
-      isTeacher: true
-    };
-    
-    activateTeacherDashboard(teacherUser);
-  } else {
-    alert('비밀번호가 올바르지 않습니다. (기본 비밀번호: 1234)');
-  }
-}
-
-// Quick One-Click Teacher Login for Admin
-function simulateTeacherLogin(name, email) {
-  const teacherUser = {
-    name: name || '담임선생님 (관리자)',
-    email: 'gusals0432@gmail.com',
-    avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Teacher',
-    isTeacher: true
-  };
-  activateTeacherDashboard(teacherUser);
-}
-
-// Activate Teacher Mode & View
-function activateTeacherDashboard(teacherUser) {
-  APP_STATE.isTeacherMode = true;
-  APP_STATE.currentUser = teacherUser;
-  localStorage.setItem('raon_current_user', JSON.stringify(teacherUser));
-  updateUserUI();
-
-  closeTeacherAuthModal();
-
-  // Hide normal tabs and activate teacher dashboard tab
-  const contents = document.querySelectorAll('.tab-content');
-  contents.forEach(c => c.classList.remove('active'));
-
-  const teacherDash = document.getElementById('tab-teacher-dashboard');
-  teacherDash.classList.remove('hidden');
-  teacherDash.classList.add('active');
-
-  document.getElementById('modeToggleText').textContent = '학생 모드로 돌아가기';
-  renderTeacherFeed();
-
-  if (window.confetti) {
-    window.confetti({ particleCount: 60, spread: 70, origin: { y: 0.5 } });
-  }
-}
-
 function renderTeacherFeed() {
   const grid = document.getElementById('teacherEntriesGrid');
+  const banner = document.getElementById('teacherClassBanner');
+  const titleEl = document.getElementById('teacherDashTitle');
   if (!grid) return;
 
-  const filterEmotion = document.getElementById('teacherEmotionFilter').value;
+  const user = APP_STATE.currentUser;
+
+  if (banner && user) {
+    banner.innerHTML = `
+      <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 16px 20px; border-radius: 12px; margin-bottom: 20px;">
+        <div style="font-size: 0.9rem; opacity: 0.9;">🏫 소속 담임 학학급 정보</div>
+        <strong style="font-size: 1.4rem; font-family: 'Jua';">${user.schoolName || ''} ${user.grade || ''}학년 ${user.classNum || ''}반 (${user.name})</strong>
+        <div style="margin-top: 6px; font-size: 0.9rem; background: rgba(255,255,255,0.2); display: inline-block; padding: 4px 12px; border-radius: 20px;">
+          🔑 학급 초대 코드: <strong style="color: #fef08a;">${user.classCode || '통합'}</strong>
+        </div>
+      </div>
+    `;
+  }
+
+  const filterEmotion = document.getElementById('teacherEmotionFilter') ? document.getElementById('teacherEmotionFilter').value : 'all';
   const diaries = getStoredDiaries();
 
-  let filtered = diaries;
+  let filtered = diaries.filter(d => {
+    if (!d) return false;
+    if (APP_STATE.isSuperAdmin) return true; // Super admin sees all
+    if (user && user.classCode) {
+      return d.classCode === user.classCode || (d.schoolName === user.schoolName && d.grade === user.grade && d.classNum === user.classNum);
+    }
+    return true;
+  });
+
   if (filterEmotion !== 'all') {
-    filtered = diaries.filter(d => d.emotion === filterEmotion);
+    filtered = filtered.filter(d => d.emotion === filterEmotion);
   }
 
   grid.innerHTML = '';
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; padding:40px; color:#94a3b8;">해당하는 학생 일기 내역이 없습니다.</p>`;
+    grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; padding:40px; color:#94a3b8;">학급 학생 일기 내역이 없거나 조건에 해당하는 일기가 없습니다.</p>`;
     return;
   }
 
   filtered.forEach(entry => {
     if (!entry) return;
-    const userName = (entry.user && entry.user.name) || entry.userName || '라온반 학생';
+    const userName = (entry.user && entry.user.name) || entry.userName || '학생';
     const userEmail = (entry.user && entry.user.email) || entry.userEmail || '';
     const userAvatar = (entry.user && entry.user.avatar) || entry.userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userName)}`;
     const emo = EMOTIONS_CONFIG[entry.emotion] || EMOTIONS_CONFIG.joy;
@@ -1001,7 +1004,7 @@ function renderTeacherFeed() {
         </div>
         <span>${emo.emoji} ${emo.title}</span>
       </div>
-      <div style="font-size:0.8rem; color:#64748b;">${entry.date || ''} ${entry.time || ''} | 강도: ${entry.intensity || 3}단계</div>
+      <div style="font-size:0.8rem; color:#64748b;">${entry.date || ''} ${entry.time || ''} | 강도: ${entry.intensity || 3}단계 | 코드: ${entry.classCode || '-'}</div>
       <h5 style="font-family:'Jua'; font-size:1.1rem; margin-top:4px;">${escapeHtml(entry.title || '')}</h5>
       <p style="font-size:0.95rem; color:#334155;">${escapeHtml(entry.content || '')}</p>
       ${entry.teacherComment ? `<div style="background:#f3e8ff; border:1px solid #c084fc; padding:8px 12px; border-radius:10px; font-size:0.88rem; color:#6b21a8;"><strong>👩‍🏫 선생님 피드백:</strong> ${escapeHtml(entry.teacherComment)}</div>` : ''}
@@ -1040,22 +1043,15 @@ function saveTeacherComment(entryId) {
   }
 }
 
-// Teacher Delete Diary Entry
 function deleteDiaryByTeacher(entryId, studentName) {
   if (!confirm(`[선생님 권한] ${studentName} 학생의 이 마음일기를 정말 삭제하시겠습니까?`)) {
     return;
   }
 
-  // Delete from Firestore
   if (window.RaonFirebase && window.RaonFirebase.isReady()) {
-    window.RaonFirebase.deleteDiaryFromFirestore(entryId).then(() => {
-      console.log("🔥 Firestore 클라우드 삭제 완료 ID:", entryId);
-    }).catch(err => {
-      console.warn("Firestore 삭제 실패:", err);
-    });
+    window.RaonFirebase.deleteDiaryFromFirestore(entryId).catch(err => console.warn(err));
   }
 
-  // Immediately filter out from in-memory state & local storage
   if (APP_STATE.firestoreDiaries && Array.isArray(APP_STATE.firestoreDiaries)) {
     APP_STATE.firestoreDiaries = APP_STATE.firestoreDiaries.filter(d => d.id !== entryId);
   }
@@ -1068,5 +1064,53 @@ function deleteDiaryByTeacher(entryId, studentName) {
   renderClassWeather();
   renderHistoryCalendar();
 
-  alert('해당 마음일기가 완전히 삭제되었습니다.');
+  alert('해당 마음일기가 삭제되었습니다.');
+}
+
+// ==========================================================================
+// 9. Super Admin Master Control Center (gusals0432@gmail.com)
+// ==========================================================================
+function renderSuperAdminPanel() {
+  if (!APP_STATE.isSuperAdmin) return;
+
+  const tableBody = document.getElementById('superAdminTeacherTableBody');
+  const statClassEl = document.getElementById('statSuperClassCount');
+  const statTeacherEl = document.getElementById('statSuperTeacherCount');
+  const statDiaryEl = document.getElementById('statSuperDiaryCount');
+
+  const teachers = APP_STATE.registeredTeachers || [];
+  const diaries = getStoredDiaries();
+
+  // Calculate unique classes
+  const classSet = new Set();
+  teachers.forEach(t => {
+    if (t.schoolName && t.grade && t.classNum) {
+      classSet.add(`${t.schoolName}_${t.grade}_${t.classNum}`);
+    }
+  });
+
+  if (statClassEl) statClassEl.textContent = `${classSet.size}개 학반`;
+  if (statTeacherEl) statTeacherEl.textContent = `${teachers.length}명 교사`;
+  if (statDiaryEl) statDiaryEl.textContent = `${diaries.length}건 일기`;
+
+  if (tableBody) {
+    tableBody.innerHTML = '';
+    if (teachers.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 24px; color:#94a3b8;">가입된 담임 교사 내역이 없습니다. 교사 가입 시 여기에 자동으로 표시됩니다.</td></tr>`;
+      return;
+    }
+
+    teachers.forEach(t => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${escapeHtml(t.name || '교사')}</strong></td>
+        <td>${escapeHtml(t.schoolName || '-')}</td>
+        <td>${t.grade || '-'}학년 ${t.classNum || '-'}반</td>
+        <td><span class="code-pill">${t.classCode || '-'}</span></td>
+        <td>${escapeHtml(t.email || '-')}</td>
+        <td><span style="color:#10b981; font-weight:bold;">● 즉시 자동 승인됨</span></td>
+      `;
+      tableBody.appendChild(tr);
+    });
+  }
 }

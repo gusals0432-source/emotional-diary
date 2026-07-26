@@ -214,6 +214,38 @@ export async function deleteDiaryFromFirestore(docId) {
   await deleteDoc(docRef);
 }
 
+// Register Teacher & Auto Created Class in Firestore `teachers` collection
+export async function registerTeacherAndClass(teacherData) {
+  if (!isFirebaseReady || !db) return null;
+  try {
+    const docRef = await addDoc(collection(db, "teachers"), {
+      ...teacherData,
+      status: "approved", // 즉시 자동 승인
+      createdTimestamp: serverTimestamp()
+    });
+    console.log("🔥 교사 및 학반 자동 등록 성공 ID:", docRef.id);
+    return docRef.id;
+  } catch (err) {
+    console.error("❌ 교사/학반 등록 오류:", err);
+    throw err;
+  }
+}
+
+// Fetch all registered teachers and classes for Super Admin (gusals0432@gmail.com)
+export function subscribeToTeachersFirestore(callback) {
+  if (!isFirebaseReady || !db) return;
+  const q = collection(db, "teachers");
+  return onSnapshot(q, (snapshot) => {
+    const list = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ ...docSnap.data(), id: docSnap.id });
+    });
+    callback(list);
+  }, (err) => {
+    console.error("교사 목록 수신 오류:", err);
+  });
+}
+
 // Expose to window for global access
 window.RaonFirebase = {
   initFirebaseService,
@@ -224,5 +256,7 @@ window.RaonFirebase = {
   addCheerToFirestore,
   saveTeacherCommentToFirestore,
   deleteDiaryFromFirestore,
+  registerTeacherAndClass,
+  subscribeToTeachersFirestore,
   isReady: () => isFirebaseReady
 };
