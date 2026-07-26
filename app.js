@@ -271,6 +271,23 @@ function saveClientId() {
   }
 }
 
+function saveFirebaseConfig() {
+  const jsonStr = document.getElementById('inputFirebaseConfigJson').value.trim();
+  if (!jsonStr) return;
+  try {
+    const parsed = JSON.parse(jsonStr);
+    if (!parsed.apiKey || !parsed.projectId) {
+      alert('올바른 Firebase Config JSON 형식이 아닙니다 (apiKey, projectId 필수).');
+      return;
+    }
+    localStorage.setItem('raon_firebase_config', JSON.stringify(parsed));
+    alert('🔥 Firebase 프로젝트 연동 설정이 성공적으로 저장되었습니다! 웹 앱을 새로고침합니다.');
+    location.reload();
+  } catch (e) {
+    alert('JSON 파싱 오류: JSON 형식을 올바르게 입력해 주세요.\n예: {"apiKey":"...", "projectId":"..."}');
+  }
+}
+
 // ==========================================================================
 // 3. Tab Navigation & View Switcher
 // ==========================================================================
@@ -452,7 +469,14 @@ function handleDiarySubmit(e) {
     cheersCount: 0
   };
 
-  // Save to LocalStorage
+  // Save to Firebase Firestore if connected
+  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+    window.RaonFirebase.saveDiaryToFirestore(entry).catch(err => {
+      console.warn("Firestore 저장 중 경고:", err);
+    });
+  }
+
+  // Save to LocalStorage Fallback
   const diaries = getStoredDiaries();
   diaries.unshift(entry);
   localStorage.setItem('raon_mind_diaries', JSON.stringify(diaries));
