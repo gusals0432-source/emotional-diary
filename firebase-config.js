@@ -84,7 +84,7 @@ export function initFirebaseService(onUserChangedCallback, onClassFeedCallback) 
             avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.displayName || 'Student')}`,
             uid: user.uid,
             isGoogleAuth: true,
-            isTeacher: user.email && (user.email.includes('teacher') || user.email.includes('admin'))
+            isTeacher: user.email && user.email.toLowerCase() === 'gusals0432@gmail.com'
           };
           onUserChangedCallback(userObj);
         } else {

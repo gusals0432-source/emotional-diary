@@ -219,15 +219,15 @@ function updateUserUI() {
     userAvatarImg.src = APP_STATE.currentUser.avatar;
     if (greetingStudentName) greetingStudentName.textContent = APP_STATE.currentUser.name;
 
-    // Check if logged in user has Teacher/Admin role
+    // Check if logged in user is the designated Admin Teacher account (gusals0432@gmail.com)
     const isTeacherAccount = APP_STATE.currentUser.isTeacher || 
-      (APP_STATE.currentUser.email && (APP_STATE.currentUser.email.includes('teacher') || APP_STATE.currentUser.email.includes('admin')));
+      (APP_STATE.currentUser.email && APP_STATE.currentUser.email.toLowerCase() === 'gusals0432@gmail.com');
 
     if (isTeacherAccount) {
-      // Teacher Account: Show Teacher Mode Toggle Button
+      // Admin Teacher Account: Show Teacher Mode Toggle Button
       if (btnModeToggle) btnModeToggle.classList.remove('hidden');
     } else {
-      // Student Account: HIDE Teacher Mode Button Completely
+      // Non-admin accounts: HIDE Teacher Mode Button Completely & Block Access
       if (btnModeToggle) btnModeToggle.classList.add('hidden');
       
       // If currently on teacher tab, force back to student view
@@ -808,8 +808,8 @@ function handleTeacherAdminLogin(e) {
   // Admin / Teacher Credentials validation
   if (pwVal === '1234' || pwVal === 'admin' || pwVal === 'teacher' || pwVal.length >= 4) {
     const teacherUser = {
-      name: idVal.includes('@') ? idVal.split('@')[0] + ' 선생님' : idVal + ' 선생님 (관리자)',
-      email: idVal.includes('@') ? idVal : `${idVal}@saettum.es.kr`,
+      name: '담임선생님 (관리자)',
+      email: 'gusals0432@gmail.com',
       avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Teacher',
       isTeacher: true
     };
@@ -820,11 +820,11 @@ function handleTeacherAdminLogin(e) {
   }
 }
 
-// Quick One-Click Teacher Login
+// Quick One-Click Teacher Login for Admin
 function simulateTeacherLogin(name, email) {
   const teacherUser = {
-    name: name,
-    email: email,
+    name: name || '담임선생님 (관리자)',
+    email: 'gusals0432@gmail.com',
     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Teacher',
     isTeacher: true
   };
