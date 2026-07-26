@@ -52,16 +52,11 @@ const getFirebaseConfig = () => {
 let app, auth, db, provider;
 let isFirebaseReady = false;
 
-// Initialize Firebase Services
-export function initFirebaseService(onUserChangedCallback, onClassFeedCallback) {
+// Automatic Firebase Services Initialization
+function autoInitFirebase() {
   try {
     const config = getFirebaseConfig();
-    
-    // Check if valid API Key is provided
-    if (!config.apiKey || config.apiKey === "YOUR_FIREBASE_API_KEY") {
-      console.log("ℹ️ Firebase API Key가 설정되지 않아 스뮬레이션 및 로컬 저장소 모드로 구동됩니다.");
-      return false;
-    }
+    if (!config.apiKey || config.apiKey === "YOUR_FIREBASE_API_KEY") return false;
 
     if (!getApps().length) {
       app = initializeApp(config);
@@ -74,37 +69,41 @@ export function initFirebaseService(onUserChangedCallback, onClassFeedCallback) 
     provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     isFirebaseReady = true;
-
-    // Firebase Auth State Observer
-    onAuthStateChanged(auth, (user) => {
-      if (onUserChangedCallback) {
-        if (user) {
-          const userObj = {
-            name: user.displayName || '라온반 학생',
-            email: user.email || '',
-            avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.displayName || 'Student')}`,
-            uid: user.uid,
-            isGoogleAuth: true,
-            isTeacher: user.email && user.email.toLowerCase() === 'gusals0432@gmail.com'
-          };
-          onUserChangedCallback(userObj);
-        } else {
-          onUserChangedCallback(null);
-        }
-      }
-    });
-
-    // Real-time Firestore Subscription for Class Diaries
-    if (onClassFeedCallback) {
-      subscribeToDiariesFirestore(onClassFeedCallback);
-    }
-
-    console.log("🔥 Firebase Auth & Firestore가 성공적으로 연결되었습니다.");
+    console.log("🔥 Firebase Engine & Google Auth Provider 100% 준비 완료.");
     return true;
   } catch (err) {
-    console.warn("Firebase 초기화 중 경고:", err.message);
+    console.warn("Firebase 자동 초기화 경고:", err.message);
     return false;
   }
+}
+
+autoInitFirebase();
+
+// Initialize Firebase Observer Services
+export function initFirebaseService(onUserChangedCallback, onClassFeedCallback) {
+  if (!isFirebaseReady) autoInitFirebase();
+
+  if (auth && onUserChangedCallback) {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const userObj = {
+          name: user.displayName || '라온반 학생',
+          email: user.email || '',
+          avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.displayName || 'Student')}`,
+          uid: user.uid,
+          isGoogleAuth: true,
+          isTeacher: user.email && user.email.toLowerCase() === 'gusals0432@gmail.com'
+        };
+        onUserChangedCallback(userObj);
+      }
+    });
+  }
+
+  if (isFirebaseReady && onClassFeedCallback) {
+    subscribeToDiariesFirestore(onClassFeedCallback);
+  }
+
+  return isFirebaseReady;
 }
 
 // Google Sign-In with Firebase Auth
