@@ -111,8 +111,21 @@ export async function loginWithFirebaseGoogle() {
   if (!isFirebaseReady || !auth) {
     throw new Error("Firebase가 아직 설정되지 않았습니다.");
   }
-  const result = await signInWithPopup(auth, provider);
-  return result.user;
+  try {
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (err) {
+    if (err.code === 'auth/unauthorized-domain') {
+      const currentHost = window.location.hostname;
+      alert(`⚠️ [Firebase 도메인 승인 필요]\n현재 접속 주소(${currentHost})가 Firebase 승인 도메인에 포함되지 않았습니다.\n\nFirebase 콘솔 ➔ Authentication ➔ 설정 ➔ 승인된 도메인에 '${currentHost}'를 추가해 주세요!`);
+    } else if (err.code === 'auth/popup-blocked') {
+      alert('⚠️ 브라우저 팝업이 차단되었습니다. 주소창 우측에서 팝업 허용을 클릭해 주세요.');
+    } else if (err.code !== 'auth/popup-closed-by-user') {
+      console.error("Firebase 구글 로그인 오류:", err);
+      alert(`구글 로그인 중 오류가 발생했습니다: ${err.message || err.code}`);
+    }
+    throw err;
+  }
 }
 
 // Sign-Out
