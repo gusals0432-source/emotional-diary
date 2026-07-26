@@ -14,9 +14,6 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- Google Identity Services API (Google OAuth 2.0) -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  
   <!-- Canvas Confetti for Celebration Effects -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
@@ -433,39 +430,11 @@
         <p>새뜸초등학교 6학년 라온반 구글 계정으로 로그인해 주세요.</p>
       </div>
 
-      <div class="modal-body">
-        
-        <!-- Standard Google Identity Services Button Container -->
-        <div id="g_id_onload"
-             data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
-             data-context="signin"
-             data-ux_mode="popup"
-             data-callback="handleGoogleCredentialResponse"
-             data-auto_select="false">
-        </div>
-
-        <div class="g-signin-wrapper">
-          <div class="g_id_signin"
-               data-type="standard"
-               data-shape="rectangular"
-               data-theme="outline"
-               data-text="signin_with"
-               data-size="large"
-               data-logo_alignment="left">
-          </div>
-        </div>
-
-        <div class="custom-email-box">
-          <label for="customGoogleName">구글 계정 이메일 직접 입력:</label>
-          <div class="input-row">
-            <input type="text" id="customGoogleName" placeholder="이름 (예: 홍길동)">
-            <input type="email" id="customGoogleEmail" placeholder="id@school.es.kr">
-            <button class="btn-secondary" onclick="handleCustomGoogleLogin()">로그인</button>
-          </div>
-        </div>
-
-
-
+      <div class="modal-body" style="text-align: center; padding: 20px 0;">
+        <button class="btn-google-login" style="margin: 0 auto; padding: 14px 28px; font-size: 1.05rem;" onclick="handleGooglePopupLogin()">
+          <img src="https://lh3.googleusercontent.com/COxitduyYXxAVXFTq8VZWBW9xqYxMlhVEy25JaPq4iuTQ0W1s6ptGLAkD0l06nPvu8SsuJGKn5sM7ICX1ainwAc" alt="Google" class="google-icon-img" style="width: 22px; height: 22px;">
+          <span>Google 계정으로 로그인</span>
+        </button>
       </div>
     </div>
   </div>
