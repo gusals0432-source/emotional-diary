@@ -381,6 +381,15 @@ function initFormListeners() {
   }
 }
 
+function getOrCreateLocalUserUid() {
+  let uid = localStorage.getItem('raon_user_uid');
+  if (!uid) {
+    uid = `local_uid_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    localStorage.setItem('raon_user_uid', uid);
+  }
+  return uid;
+}
+
 // Diary Submission Handler
 function handleDiarySubmit(e) {
   e.preventDefault();
@@ -409,11 +418,13 @@ function handleDiarySubmit(e) {
   const now = new Date();
   const todayStr = getTodayDateString();
   const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  const localUid = getOrCreateLocalUserUid();
 
   const entry = {
     id: `entry_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
     date: todayStr,
     time: timeStr,
+    userUid: localUid,
     user: {
       name: APP_STATE.currentUser.name,
       email: APP_STATE.currentUser.email,
@@ -652,12 +663,26 @@ function renderHistoryCalendar() {
 
   const diaries = getStoredDiaries();
   const user = APP_STATE.currentUser;
+  const localUid = localStorage.getItem('raon_user_uid');
 
   const userDiaries = diaries.filter(d => {
-    if (!d || !user) return false;
-    const emailMatch = (user.email && d.user && d.user.email) ? (d.user.email === user.email) : false;
-    const nameMatch = (user.name && d.user && d.user.name) ? (d.user.name === user.name) : false;
-    return emailMatch || nameMatch;
+    if (!d) return false;
+    
+    // 1. Logged in user with valid specific email
+    if (user && user.email && d.user && d.user.email) {
+      if (user.email.toLowerCase().trim() === d.user.email.toLowerCase().trim()) {
+        return true;
+      }
+    }
+
+    // 2. Matching exact local session userUid
+    if (localUid && d.userUid) {
+      if (d.userUid === localUid) {
+        return true;
+      }
+    }
+
+    return false;
   });
 
   const todayStr = getTodayDateString();
