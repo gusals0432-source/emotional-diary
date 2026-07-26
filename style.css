@@ -798,7 +798,8 @@ body {
   font-size: 0.95rem;
 }
 
-.checkbox-group input[type="checkbox"] {
+.checkbox-group input[type="checkbox"],
+.checkbox-group input[type="radio"] {
   width: 18px;
   height: 18px;
   accent-color: var(--accent-primary);
