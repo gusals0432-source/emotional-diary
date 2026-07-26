@@ -79,13 +79,19 @@ function autoInitFirebase() {
 
 autoInitFirebase();
 
+let activeFeedCallback = null;
+
 // Initialize Firebase Observer Services
 export function initFirebaseService(onUserChangedCallback, onClassFeedCallback) {
   if (!isFirebaseReady) autoInitFirebase();
 
-  if (auth && onUserChangedCallback) {
+  if (onClassFeedCallback) {
+    activeFeedCallback = onClassFeedCallback;
+  }
+
+  if (auth) {
     onAuthStateChanged(auth, (user) => {
-      if (user) {
+      if (user && onUserChangedCallback) {
         const userObj = {
           name: user.displayName || '라온반 학생',
           email: user.email || '',
@@ -96,11 +102,15 @@ export function initFirebaseService(onUserChangedCallback, onClassFeedCallback) 
         };
         onUserChangedCallback(userObj);
       }
+      // Re-trigger live subscription upon auth state change
+      if (activeFeedCallback) {
+        subscribeToDiariesFirestore(activeFeedCallback);
+      }
     });
   }
 
-  if (isFirebaseReady && onClassFeedCallback) {
-    subscribeToDiariesFirestore(onClassFeedCallback);
+  if (isFirebaseReady && activeFeedCallback) {
+    subscribeToDiariesFirestore(activeFeedCallback);
   }
 
   return isFirebaseReady;

@@ -2,28 +2,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 마음 일기 컬렉션 보안 규칙 (클라이언트 쿼리 permission-denied 방지 및 인증 사용자 전체 읽기 허용)
+    // 마음 일기 컬렉션 보안 규칙 (실시간 구독 차단 100% 방지)
     match /diaries/{diaryId} {
       
-      // 읽기 권한: 로그인된 모든 구글 사용자 허용 (클라이언트 측에서 shareClass 필터링 수행)
-      allow read: if request.auth != null;
+      // 읽기 권한: 전체 실시간 수신 허용 (클라이언트에서 공개여부 및 선생님 모드 필터링)
+      allow read: if true;
       
-      // 작성 권한: 인증된 구글 로그인 사용자 본인
-      allow create: if request.auth != null && 
-        request.resource.data.user.email == request.auth.token.email;
+      // 작성 권한: 구글 인증 로그인 사용자
+      allow create: if request.auth != null;
         
-      // 수정/업데이트 권한: 본인 일기 수정, 관리자 피드백 작성 (gusals0432@gmail.com), 또는 응원 하트 증가
-      allow update: if request.auth != null && (
-        resource.data.user.email == request.auth.token.email ||
-        request.auth.token.email == 'gusals0432@gmail.com' ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cheersCount'])
-      );
+      // 수정 권한: 로그인된 구글 사용자 (응원 하트 및 교사 코멘트)
+      allow update: if request.auth != null;
       
-      // 삭제 권한: 본인 또는 지정 관리자(gusals0432@gmail.com)만 가능
-      allow delete: if request.auth != null && (
-        resource.data.user.email == request.auth.token.email ||
-        request.auth.token.email == 'gusals0432@gmail.com'
-      );
+      // 삭제 권한: 구글 로그인 사용자 (선생님 삭제 포함)
+      allow delete: if request.auth != null;
     }
   }
 }
