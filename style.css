@@ -646,11 +646,12 @@ body {
   background: rgba(241, 245, 249, 0.8);
 }
 
-.sub-tag-chip.active {
-  background: var(--accent-primary);
-  color: #ffffff;
-  border-color: var(--accent-primary);
-  font-weight: 600;
+.sub-tag-chip.active,
+.sub-tag-chip.selected {
+  background: var(--accent-primary) !important;
+  color: #ffffff !important;
+  border-color: var(--accent-primary) !important;
+  font-weight: 700 !important;
 }
 
 /* --- STEP 2: Writing Form & Prompt --- */

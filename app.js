@@ -329,6 +329,7 @@ function renderSubTags(tagsList) {
     chip.textContent = tagText;
     chip.onclick = () => {
       chip.classList.toggle('selected');
+      chip.classList.toggle('active');
       if (chip.classList.contains('selected')) {
         APP_STATE.selectedSubTags.push(tagText);
       } else {
@@ -348,6 +349,7 @@ function updateIntensity(val) {
 
 function toggleCatChip(btn, categoryName) {
   btn.classList.toggle('selected');
+  btn.classList.toggle('active');
   if (btn.classList.contains('selected')) {
     if (!APP_STATE.selectedCategories.includes(categoryName)) {
       APP_STATE.selectedCategories.push(categoryName);
@@ -652,8 +654,10 @@ function renderHistoryCalendar() {
   const user = APP_STATE.currentUser;
 
   const userDiaries = diaries.filter(d => {
-    if (!d || !user) return true;
-    return (d.user && d.user.email === user.email) || (d.user && d.user.name === user.name);
+    if (!d || !user) return false;
+    const emailMatch = (user.email && d.user && d.user.email) ? (d.user.email === user.email) : false;
+    const nameMatch = (user.name && d.user && d.user.name) ? (d.user.name === user.name) : false;
+    return emailMatch || nameMatch;
   });
 
   const todayStr = getTodayDateString();
