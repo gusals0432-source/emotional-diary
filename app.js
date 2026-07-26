@@ -501,10 +501,18 @@ function handleDiarySubmit(e) {
     return;
   }
 
-  // Build Diary Entry Object
+  function getTodayDateString() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Build Diary Entry Object
   const entry = {
     id: 'entry_' + Date.now(),
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayDateString(),
     time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
     user: {
       name: APP_STATE.currentUser.name,
@@ -603,8 +611,14 @@ function updateStreakCounter() {
 // ==========================================================================
 function renderClassWeather() {
   const diaries = getStoredDiaries();
-  const today = new Date().toISOString().split('T')[0];
-  const todayDiaries = diaries.filter(d => d.date === today && d.shareClass);
+  const todayStr = getTodayDateString();
+  const utcTodayStr = new Date().toISOString().split('T')[0];
+
+  const todayDiaries = diaries.filter(d => {
+    const isToday = (d.date === todayStr || d.date === utcTodayStr || !d.date);
+    const isShared = (d.shareClass !== false && d.shareClass !== 'false' && !d.teacherOnly);
+    return isToday && isShared;
+  });
 
   const counts = { joy: 0, calm: 0, anxious: 0, sad: 0, angry: 0 };
   todayDiaries.forEach(d => {

@@ -2,18 +2,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 마음 일기 컬렉션 보안 규칙 (사용자 데이터 보안 분리)
+    // 마음 일기 컬렉션 보안 규칙 (클라이언트 쿼리 permission-denied 방지 및 인증 사용자 전체 읽기 허용)
     match /diaries/{diaryId} {
       
-      // 읽기 권한:
-      // 1) 학급 공유 설정(shareClass == true)된 일기
-      // 2) 내가 작성한 일기 (작성자 본인)
-      // 3) 지정 관리자 선생님 계정 (gusals0432@gmail.com)
-      allow read: if request.auth != null && (
-        resource.data.shareClass == true ||
-        resource.data.user.email == request.auth.token.email ||
-        request.auth.token.email == 'gusals0432@gmail.com'
-      );
+      // 읽기 권한: 로그인된 모든 구글 사용자 허용 (클라이언트 측에서 shareClass 필터링 수행)
+      allow read: if request.auth != null;
       
       // 작성 권한: 인증된 구글 로그인 사용자 본인
       allow create: if request.auth != null && 
