@@ -692,22 +692,26 @@ function renderClassWeather() {
     }
 
     todayDiaries.forEach(entry => {
+      if (!entry) return;
+      const userName = (entry.user && entry.user.name) || entry.userName || '라온반 학생';
+      const userAvatar = (entry.user && entry.user.avatar) || entry.userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userName)}`;
       const emotionData = EMOTIONS_CONFIG[entry.emotion] || EMOTIONS_CONFIG.joy;
+
       const card = document.createElement('div');
       card.className = 'feed-card';
-      card.style.borderLeftColor = `var(--emotion-${entry.emotion})`;
+      card.style.borderLeftColor = `var(--emotion-${entry.emotion || 'joy'})`;
 
       card.innerHTML = `
         <div class="feed-header">
           <div class="feed-author">
-            <img src="${entry.user.avatar}" class="feed-avatar" alt="${entry.user.name}">
-            <span>${entry.user.name}</span>
+            <img src="${userAvatar}" class="feed-avatar" alt="${userName}">
+            <span>${userName}</span>
             <span style="font-size: 1.1rem;">${emotionData.emoji}</span>
           </div>
-          <span class="feed-time">${entry.time}</span>
+          <span class="feed-time">${entry.time || '방금 전'}</span>
         </div>
-        <h5 class="feed-title">${escapeHtml(entry.title)}</h5>
-        <p class="feed-content">${escapeHtml(entry.content)}</p>
+        <h5 class="feed-title">${escapeHtml(entry.title || '')}</h5>
+        <p class="feed-content">${escapeHtml(entry.content || '')}</p>
         <div class="feed-footer">
           <span class="feed-sticker">${entry.sticker || '⭐'}</span>
           <button class="btn-cheer" onclick="handleCheer('${entry.id}', this)">
@@ -926,6 +930,10 @@ function renderTeacherFeed() {
   }
 
   filtered.forEach(entry => {
+    if (!entry) return;
+    const userName = (entry.user && entry.user.name) || entry.userName || '라온반 학생';
+    const userEmail = (entry.user && entry.user.email) || entry.userEmail || '';
+    const userAvatar = (entry.user && entry.user.avatar) || entry.userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userName)}`;
     const emo = EMOTIONS_CONFIG[entry.emotion] || EMOTIONS_CONFIG.joy;
     const isNeedsAttention = ['anxious', 'sad', 'angry'].includes(entry.emotion);
     
@@ -935,20 +943,20 @@ function renderTeacherFeed() {
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <div style="display:flex; align-items:center; gap:8px;">
-          <img src="${entry.user.avatar}" width="32" height="32" style="border-radius:50%">
-          <strong>${entry.user.name} (${entry.user.email})</strong>
+          <img src="${userAvatar}" width="32" height="32" style="border-radius:50%">
+          <strong>${userName} (${userEmail})</strong>
         </div>
         <span>${emo.emoji} ${emo.title}</span>
       </div>
-      <div style="font-size:0.8rem; color:#64748b;">${entry.date} ${entry.time} | 강도: ${entry.intensity}단계</div>
-      <h5 style="font-family:'Jua'; font-size:1.1rem; margin-top:4px;">${escapeHtml(entry.title)}</h5>
-      <p style="font-size:0.95rem; color:#334155;">${escapeHtml(entry.content)}</p>
+      <div style="font-size:0.8rem; color:#64748b;">${entry.date || ''} ${entry.time || ''} | 강도: ${entry.intensity || 3}단계</div>
+      <h5 style="font-family:'Jua'; font-size:1.1rem; margin-top:4px;">${escapeHtml(entry.title || '')}</h5>
+      <p style="font-size:0.95rem; color:#334155;">${escapeHtml(entry.content || '')}</p>
       ${entry.teacherComment ? `<div style="background:#f3e8ff; border:1px solid #c084fc; padding:8px 12px; border-radius:10px; font-size:0.88rem; color:#6b21a8;"><strong>👩‍🏫 선생님 피드백:</strong> ${escapeHtml(entry.teacherComment)}</div>` : ''}
       
       <div class="teacher-comment-box">
         <input type="text" id="input_comment_${entry.id}" placeholder="선생님 따뜻한 한마디 남기기...">
         <button onclick="saveTeacherComment('${entry.id}')">전송</button>
-        <button class="btn-delete-entry" onclick="deleteDiaryByTeacher('${entry.id}', '${escapeHtml(entry.user.name)}')">
+        <button class="btn-delete-entry" onclick="deleteDiaryByTeacher('${entry.id}', '${escapeHtml(userName)}')">
           <i class="fa-solid fa-trash-can"></i> 삭제
         </button>
       </div>
