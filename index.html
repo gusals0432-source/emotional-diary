@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>전국 아침 마음 일기장 🌈 | 다학급 스마트 마음 플랫폼</title>
-  <meta name="description" content="전국의 모든 초등학교(1~6학년, 1~10반) 학생과 교사를 위한 등교 후 아침 마음 일기 및 학급 감정 날씨 플랫폼입니다.">
+  <title>새뜸초 6학년 라온반 아침 마음 일기장 🌈</title>
+  <meta name="description" content="새뜸초등학교 6학년 라온반 학생들이 등교 후 아침 감정을 선택하고 감정과 관련된 마음 일기를 작성하는 웹 앱입니다.">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,8 +32,8 @@
       <div class="brand">
         <div class="logo-icon">🌈</div>
         <div class="brand-text">
-          <h1 id="headerSchoolTitle">전국 아침 마음 일기장</h1>
-          <span class="sub-title" id="headerClassSubTitle">학급 맞춤형 마음 통합 서비스</span>
+          <h1>새뜸초 6학년 라온반</h1>
+          <span class="sub-title">아침 마음 일기장</span>
         </div>
       </div>
 
@@ -46,22 +46,22 @@
 
       <div class="header-right">
         <!-- Back Navigation Button (Preserves Login Session) -->
-        <button class="btn-back-nav" id="btnBackNav" onclick="goBack()" title="이전 화면으로 돌아가기 (로그인 유지)">
+        <button class="btn-back-nav" id="btnBackNav" onclick="goBack()" title="이전/메인 화면으로 돌아가기 (로그인 유지)">
           <i class="fa-solid fa-arrow-left"></i>
           <span>되돌리기</span>
         </button>
 
-        <!-- User Auth & Login Portal Area -->
+        <!-- Google User Profile / Auth Area -->
         <div id="userAuthArea" class="user-auth-area">
-          <button id="btnPortalOpen" class="btn-google-login" onclick="openLoginPortalModal()">
-            <i class="fa-solid fa-right-to-bracket"></i>
-            <span>로그인 / 학반 접속</span>
+          <button id="btnGoogleLogin" class="btn-google-login" onclick="handleGooglePopupLogin()">
+            <img src="https://lh3.googleusercontent.com/COxitduyYXxAVXFTq8VZWBW9xqYxMlhVEy25JaPq4iuTQ0W1s6ptGLAkD0l06nPvu8SsuJGKn5sM7ICX1ainwAc" alt="Google" class="google-icon-img">
+            <span>구글 계정 로그인</span>
           </button>
 
           <div id="userProfileBadge" class="user-profile-badge hidden">
-            <img id="userAvatarImg" src="" alt="프로필" class="user-avatar-img">
+            <img id="userAvatarImg" src="" alt="구글 프로필" class="user-avatar-img">
             <div class="user-info-text">
-              <span id="userNameText" class="user-name">사용자 이름</span>
+              <span id="userNameText" class="user-name">학생 이름</span>
               <span id="userEmailText" class="user-email">email@school.es.kr</span>
             </div>
             <button class="btn-icon-alt" title="로그아웃 / 계정 전환" onclick="handleLogout()">
@@ -80,23 +80,17 @@
       </button>
       <button class="nav-tab" data-tab="tab-class-weather" onclick="switchTab('tab-class-weather')">
         <i class="fa-solid fa-cloud-sun"></i>
-        <span id="tabClassWeatherText">우리 반 마음 날씨</span>
+        <span>라온반 마음 날씨</span>
       </button>
       <button class="nav-tab" data-tab="tab-history" onclick="switchTab('tab-history')">
         <i class="fa-solid fa-calendar-days"></i>
         <span>내 마음 달력</span>
       </button>
-      
-      <!-- Teacher Mode Dashboard Tab -->
+
+      <!-- Teacher Dashboard Tab (visible when logged in as gusals0432@gmail.com) -->
       <button class="nav-tab hidden" id="tabTeacherNav" data-tab="tab-teacher-dashboard" onclick="switchTab('tab-teacher-dashboard')">
         <i class="fa-solid fa-chalkboard-user"></i>
-        <span>담임선생님 학급 관리</span>
-      </button>
-
-      <!-- Super Admin Master Control Tab (gusals0432@gmail.com) -->
-      <button class="nav-tab hidden" id="tabSuperAdminNav" data-tab="tab-super-admin" onclick="switchTab('tab-super-admin')">
-        <i class="fa-solid fa-crown" style="color: #f59e0b;"></i>
-        <span>👑 최종 관리자 센터</span>
+        <span>담임선생님 관리자 대시보드</span>
       </button>
     </nav>
 
@@ -110,7 +104,7 @@
         <div class="welcome-card">
           <div class="welcome-text">
             <h2>좋은 아침이에요, <span id="greetingStudentName">라온반 학생</span>님! 👋</h2>
-            <p id="welcomeSubText">오늘 아침 마음의 소리에 귀 기울여 보세요. 지금 어떤 마음인가요?</p>
+            <p>오늘 아침 마음의 소리에 귀 기울여 보세요. 지금 어떤 마음인가요?</p>
           </div>
           <div class="streak-badge">
             <i class="fa-solid fa-fire"></i>
@@ -253,13 +247,13 @@
                 <div class="checkbox-group">
                   <input type="radio" id="chkShareClass" name="privacySetting" value="shareClass" checked>
                   <label for="chkShareClass">
-                    <strong>우리 반 마음 날씨에 공유하기</strong> (학급 친구들과 아침 마음 통계로 공유됩니다)
+                    <strong>라온반 마음 날씨에 공유하기</strong> (라온반 친구들과 아침 마음 통계로 공유됩니다)
                   </label>
                 </div>
                 <div class="checkbox-group">
                   <input type="radio" id="chkTeacherOnly" name="privacySetting" value="teacherOnly">
                   <label for="chkTeacherOnly">
-                    🔒 <strong>선생님만 보기</strong> (선생님만 이 일기를 읽으실 수 있습니다)
+                    🔒 <strong>선생님만 보기</strong> (담임선생님만 이 일기를 읽으실 수 있습니다)
                   </label>
                 </div>
               </div>
@@ -283,7 +277,7 @@
       <section id="tab-class-weather" class="tab-content">
         <div class="section-card">
           <div class="section-header">
-            <h3><i class="fa-solid fa-cloud-sun-rain"></i> <span id="classWeatherTitle">오늘 우리 반 아침 마음 날씨</span></h3>
+            <h3><i class="fa-solid fa-cloud-sun-rain"></i> 오늘 라온반 아침 마음 날씨</h3>
             <span class="badge-live">● 실시간</span>
           </div>
 
@@ -328,7 +322,7 @@
 
           <!-- Progress Bar Chart -->
           <div class="emotion-bar-chart">
-            <div class="bar-title">우리 반 마음 분포 비율</div>
+            <div class="bar-title">라온반 마음 분포 비율</div>
             <div class="stacked-bar-container" id="stackedBarContainer">
               <!-- Stacked bars generated by JS -->
             </div>
@@ -384,17 +378,12 @@
         </div>
       </section>
 
-      <!-- TAB 4: CLASS TEACHER DASHBOARD -->
+      <!-- TAB 4: TEACHER ADMIN DASHBOARD MODE (gusals0432@gmail.com) -->
       <section id="tab-teacher-dashboard" class="tab-content">
         <div class="section-card teacher-dashboard-card">
           <div class="section-header">
-            <h3><i class="fa-solid fa-chalkboard-user"></i> <span id="teacherDashTitle">담임선생님 학급 일기 관리</span></h3>
+            <h3><i class="fa-solid fa-chalkboard-user"></i> 새뜸초 6학년 라온반 담임선생님 관리자 대시보드</h3>
             <span class="badge-teacher">담임 교사 권한</span>
-          </div>
-
-          <!-- Class Info Banner for Teacher -->
-          <div class="teacher-class-banner" id="teacherClassBanner">
-            <!-- Dynamic Teacher Class Code Banner -->
           </div>
 
           <!-- Filter Controls for Teacher -->
@@ -425,249 +414,31 @@
         </div>
       </section>
 
-      <!-- TAB 5: SUPER ADMIN MASTER CONTROL CENTER (gusals0432@gmail.com) -->
-      <section id="tab-super-admin" class="tab-content">
-        <div class="section-card super-admin-card">
-          <div class="section-header">
-            <h3><i class="fa-solid fa-crown" style="color:#f59e0b;"></i> 👑 최종 관리자 센터 (gusals0432@gmail.com)</h3>
-            <span class="badge-accent" style="background:#8b5cf6;">전국 다학급 통합 관리</span>
-          </div>
-
-          <!-- Super Admin Stats Row -->
-          <div class="weather-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
-            <div class="weather-stat-card joy">
-              <div class="stat-icon">🏫</div>
-              <div class="stat-info">
-                <span class="stat-label">생성된 학반 총 수</span>
-                <span class="stat-value" id="statSuperClassCount">0개 학반</span>
-              </div>
-            </div>
-            <div class="weather-stat-card calm">
-              <div class="stat-icon">👩‍🏫</div>
-              <div class="stat-info">
-                <span class="stat-label">가입된 담임 교사</span>
-                <span class="stat-value" id="statSuperTeacherCount">0명 교사</span>
-              </div>
-            </div>
-            <div class="weather-stat-card anxious">
-              <div class="stat-icon">📖</div>
-              <div class="stat-info">
-                <span class="stat-label">누적 작성 마음 일기</span>
-                <span class="stat-value" id="statSuperDiaryCount">0건 일기</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Registered Teachers & Class Codes Directory Table -->
-          <div class="super-admin-section">
-            <h4><i class="fa-solid fa-address-book"></i> 가입된 담임 교사 및 학급 코드 통합 관리 목록</h4>
-            <div class="table-wrapper">
-              <table class="super-admin-table">
-                <thead>
-                  <tr>
-                    <th>교사 성명</th>
-                    <th>학교명</th>
-                    <th>학년 / 반</th>
-                    <th>발급된 고유 학급 코드</th>
-                    <th>교사 이메일</th>
-                    <th>가입 상태</th>
-                  </tr>
-                </thead>
-                <tbody id="superAdminTeacherTableBody">
-                  <!-- Dynamic rows -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
     </main>
 
     <!-- FOOTER -->
     <footer class="app-footer">
-      <p>전국 아침 마음 일기장 프로젝트 💖 | 전국의 모든 학생과 교사가 함께 만드는 따뜻한 공간</p>
+      <p>새뜸초등학교 6학년 라온반 아침 마음 일기 프로젝트 💖 | 따뜻한 아침을 만드는 우리의 공간</p>
     </footer>
   </div>
 
-  <!-- PORTAL MODAL (CHOICE: STUDENT vs TEACHER) -->
-  <div id="loginPortalModal" class="modal-overlay hidden">
-    <div class="modal-card portal-card">
-      <button class="modal-close" onclick="closeLoginPortalModal()">&times;</button>
-      
-      <div class="modal-header">
-        <div class="google-logo-badge">🌈</div>
-        <h2>아침 마음 일기장 로그인 포털</h2>
-        <p>본인의 역할을 선택해 주세요.</p>
-      </div>
-
-      <div class="portal-choices-grid">
-        <div class="portal-choice-card student-choice" onclick="openStudentLoginModal()">
-          <div class="choice-icon">👨‍🎓</div>
-          <h3>학생으로 시작하기</h3>
-          <p>내 학교, 학년, 반, 이름을 입력하고 발급받은 학급 코드로 접속합니다.</p>
-          <button class="btn-primary full-width" style="margin-top: 14px;">학생 접속하기</button>
-        </div>
-
-        <div class="portal-choice-card teacher-choice" onclick="openTeacherSignupModal()">
-          <div class="choice-icon">👩‍🏫</div>
-          <h3>교사 로그인 & 학반 등록</h3>
-          <p>구글 로그인 후 학반을 등록하면 고유 학급 코드가 자동 발급됩니다.</p>
-          <button class="btn-secondary full-width" style="margin-top: 14px; background:#8b5cf6; color:#fff;">교사 가입/로그인</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- STUDENT LOGIN MODAL -->
-  <div id="studentLoginModal" class="modal-overlay hidden">
+  <!-- GOOGLE LOGIN MODAL -->
+  <div id="loginModal" class="modal-overlay hidden">
     <div class="modal-card">
-      <button class="modal-close" onclick="closeStudentLoginModal()">&times;</button>
+      <button class="modal-close" onclick="closeLoginModal()">&times;</button>
       
       <div class="modal-header">
-        <div class="google-logo-badge">👨‍🎓</div>
-        <h2>학생 학급 접속 로그인</h2>
-        <p>소속 학교, 학년, 반, 실명 및 학급 코드를 입력해 주세요.</p>
+        <div class="google-logo-badge">
+          <img src="https://lh3.googleusercontent.com/COxitduyYXxAVXFTq8VZWBW9xqYxMlhVEy25JaPq4iuTQ0W1s6ptGLAkD0l06nPvu8SsuJGKn5sM7ICX1ainwAc" alt="Google">
+        </div>
+        <h2>구글 계정 로그인</h2>
+        <p>새뜸초등학교 6학년 라온반 구글 계정으로 로그인해 주세요.</p>
       </div>
 
-      <form id="studentLoginForm" onsubmit="handleStudentLoginSubmit(event)">
-        <div class="form-group">
-          <label for="studentSchoolInput"><i class="fa-solid fa-school"></i> 학교명:</label>
-          <input type="text" id="studentSchoolInput" placeholder="예: 새뜸초등학교" required>
-        </div>
-
-        <div class="form-row-2">
-          <div class="form-group">
-            <label for="studentGradeSelect"><i class="fa-solid fa-graduation-cap"></i> 학년:</label>
-            <select id="studentGradeSelect" required>
-              <option value="1">1학년</option>
-              <option value="2">2학년</option>
-              <option value="3">3학년</option>
-              <option value="4">4학년</option>
-              <option value="5">5학년</option>
-              <option value="6" selected>6학년</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="studentClassSelect"><i class="fa-solid fa-users"></i> 반:</label>
-            <select id="studentClassSelect" required>
-              <option value="1" selected>1반</option>
-              <option value="2">2반</option>
-              <option value="3">3반</option>
-              <option value="4">4반</option>
-              <option value="5">5반</option>
-              <option value="6">6반</option>
-              <option value="7">7반</option>
-              <option value="8">8반</option>
-              <option value="9">9반</option>
-              <option value="10">10반</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="studentNameInput"><i class="fa-solid fa-user"></i> 학생 실명 <span style="color:#ef4444; font-size:0.8rem;">(⚠️ 닉네임 사용 금지)</span>:</label>
-          <input type="text" id="studentNameInput" placeholder="실명을 입력하세요 (예: 홍길동)" required minlength="2">
-        </div>
-
-        <div class="form-group">
-          <label for="studentClassCodeInput"><i class="fa-solid fa-key"></i> 학급 초대 코드:</label>
-          <input type="text" id="studentClassCodeInput" placeholder="선생님이 발급해준 학급 코드 입력 (예: SAET-601-A9)" required style="font-family: monospace; text-transform: uppercase;">
-        </div>
-
-        <button type="submit" class="btn-primary full-width" style="margin-top: 14px;">
-          <i class="fa-solid fa-right-to-bracket"></i> 학생으로 접속하기
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- TEACHER SIGNUP / LOGIN MODAL -->
-  <div id="teacherSignupModal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button class="modal-close" onclick="closeTeacherSignupModal()">&times;</button>
-      
-      <div class="modal-header">
-        <div class="google-logo-badge">👩‍🏫</div>
-        <h2>교사 로그인 & 학반 자동 생성</h2>
-        <p>구글 로그인 및 소속 학반 정보를 입력해 주세요.</p>
-      </div>
-
-      <div style="text-align: center; margin-bottom: 20px;">
-        <button class="btn-google-login" style="margin: 0 auto; padding: 12px 24px;" onclick="handleTeacherGoogleAuth()">
-          <img src="https://lh3.googleusercontent.com/COxitduyYXxAVXFTq8VZWBW9xqYxMlhVEy25JaPq4iuTQ0W1s6ptGLAkD0l06nPvu8SsuJGKn5sM7ICX1ainwAc" alt="Google" class="google-icon-img" style="width: 20px; height: 20px;">
-          <span id="teacherGoogleBtnText">Google 계정으로 교사 로그인</span>
-        </button>
-      </div>
-
-      <form id="teacherSignupForm" onsubmit="handleTeacherSignupSubmit(event)">
-        <div class="form-group">
-          <label for="teacherSchoolInput"><i class="fa-solid fa-school"></i> 소속 학교명:</label>
-          <input type="text" id="teacherSchoolInput" placeholder="예: 새뜸초등학교" required>
-        </div>
-
-        <div class="form-row-2">
-          <div class="form-group">
-            <label for="teacherGradeSelect"><i class="fa-solid fa-graduation-cap"></i> 담당 학년:</label>
-            <select id="teacherGradeSelect" required>
-              <option value="1">1학년</option>
-              <option value="2">2학년</option>
-              <option value="3">3학년</option>
-              <option value="4">4학년</option>
-              <option value="5">5학년</option>
-              <option value="6" selected>6학년</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="teacherClassSelect"><i class="fa-solid fa-users"></i> 담당 반:</label>
-            <select id="teacherClassSelect" required>
-              <option value="1" selected>1반</option>
-              <option value="2">2반</option>
-              <option value="3">3반</option>
-              <option value="4">4반</option>
-              <option value="5">5반</option>
-              <option value="6">6반</option>
-              <option value="7">7반</option>
-              <option value="8">8반</option>
-              <option value="9">9반</option>
-              <option value="10">10반</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="teacherNameInput"><i class="fa-solid fa-user-tie"></i> 담임 교사 실명:</label>
-          <input type="text" id="teacherNameInput" placeholder="교사 실명을 입력하세요" required>
-        </div>
-
-        <button type="submit" class="btn-primary full-width" style="margin-top: 14px; background:#8b5cf6;">
-          <i class="fa-solid fa-plus-circle"></i> 학반 자동 생성 및 학급 코드 발급 받기
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- TEACHER CLASS CODE WELCOME MODAL -->
-  <div id="teacherCodeWelcomeModal" class="modal-overlay hidden">
-    <div class="modal-card success-card">
-      <div class="success-icon">🎉</div>
-      <h2>학반 등록 및 고유 학급 코드 발급 완료!</h2>
-      <p id="teacherCodeWelcomeText">선생님의 소속 학반이 성공적으로 자동 생성되었습니다.</p>
-      
-      <div class="class-code-display-box">
-        <span>학급 학생 초대 고유 코드</span>
-        <strong id="displayGeneratedClassCode">SAET-601-A9</strong>
-      </div>
-
-      <div class="modal-actions" style="flex-direction: column; gap: 10px;">
-        <button class="btn-primary full-width" onclick="copyGeneratedClassCode()">
-          <i class="fa-solid fa-copy"></i> 초대 코드 복사하기
-        </button>
-        <button class="btn-secondary full-width" onclick="closeTeacherCodeWelcomeModal()">
-          담임 대시보드로 이동하기
+      <div class="modal-body" style="text-align: center; padding: 20px 0;">
+        <button class="btn-google-login" style="margin: 0 auto; padding: 14px 28px; font-size: 1.05rem;" onclick="handleGooglePopupLogin()">
+          <img src="https://lh3.googleusercontent.com/COxitduyYXxAVXFTq8VZWBW9xqYxMlhVEy25JaPq4iuTQ0W1s6ptGLAkD0l06nPvu8SsuJGKn5sM7ICX1ainwAc" alt="Google" class="google-icon-img" style="width: 22px; height: 22px;">
+          <span>Google 계정으로 로그인</span>
         </button>
       </div>
     </div>
@@ -678,7 +449,7 @@
     <div class="modal-card success-card">
       <div class="success-icon">🎉</div>
       <h2>오늘 아침 마음 일기 제출 완료!</h2>
-      <p id="successMessageText">소중한 마음이 잘 기록되었습니다.</p>
+      <p id="successMessageText">라온반 학생님의 소중한 마음이 잘 기록되었습니다.</p>
       
       <div class="quote-box">
         <i class="fa-solid fa-quote-left"></i>
@@ -688,7 +459,7 @@
 
       <div class="modal-actions">
         <button class="btn-primary" onclick="closeSuccessModalAndGoToWeather()">
-          <i class="fa-solid fa-cloud-sun"></i> 우리 반 마음 날씨 보러가기
+          <i class="fa-solid fa-cloud-sun"></i> 라온반 마음 날씨 보러가기
         </button>
       </div>
     </div>

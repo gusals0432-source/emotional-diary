@@ -1,28 +1,23 @@
 /* ==========================================================================
-   전국 아침 마음 일기장 MAIN JAVASCRIPT
-   - 다학급(1~6학년, 1~10반) 자동 확장
-   - 교사 구글 로그인 & 학반 자동 생성 (고유 학급 초대 코드 발급)
-   - 실명 학생 로그인 & 학급 코드 검증
-   - 최종 관리자(gusals0432@gmail.com) 가입 교사 및 학반 통합 관리 센터
+   새뜸초등학교 6학년 라온반 아침 마음 일기장 MAIN JAVASCRIPT
+   - 새뜸초 6학년 라온반 전용 맞춤형 일기장
+   - 관리자 계정 (gusals0432@gmail.com) 구글 로그인 시 담임 교사 모드 자동 이동
+   - 실시간 클라우드 공유 & 학생 본인 작성 일기 삭제 지원
    - 로그인 유지를 보장하는 스마트 되돌리기(goBack) 네비게이션
    ========================================================================== */
 
 // --- Global Application State ---
 const APP_STATE = {
-  currentUser: null,           // { name, email, avatar, role, schoolName, grade, classNum, classCode, isTeacher, isSuperAdmin }
+  currentUser: null,           // { name, email, avatar, isGoogleAuth, isTeacher }
   selectedEmotion: null,       // 'joy', 'calm', 'anxious', 'sad', 'angry'
   selectedSubTags: [],
   selectedIntensity: 3,
   selectedCategories: [],
   selectedSticker: '⭐',
   isTeacherMode: false,
-  isSuperAdmin: false,
   currentCalendarDate: new Date(),
   firestoreDiaries: null,
-  registeredTeachers: [],
-  navigationHistory: ['tab-write'],
-  tempGoogleTeacherEmail: '',
-  tempGoogleTeacherAvatar: ''
+  navigationHistory: ['tab-write']
 };
 
 // --- Emotion Configuration Data ---
@@ -66,9 +61,9 @@ const EMOTIONS_CONFIG = {
 
 // --- Daily Encouraging Quotes ---
 const DAILY_QUOTES = [
-  "오늘 하루도 가장 빛나는 너를 응원해! 🌟",
+  "오늘 하루도 라온반에서 가장 빛나는 너를 응원해! 🌟",
   "어떤 마음이든 내 안의 귀중한 소리랍니다. 토닥토닥! 💖",
-  "우리 반 친구들과 함께 따뜻한 웃음을 나눠보세요 😃",
+  "새뜸초 라온반 친구들과 함께 따뜻한 웃음을 나눠보세요 😃",
   "너의 아침 생각 하나가 오늘 하루를 멋지게 완성할 거야 🌈",
   "오늘도 나답게, 건강하고 당당하게 출발! 💪"
 ];
@@ -84,16 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
       (userObj) => { if (userObj && !APP_STATE.currentUser) setLoggedInUser(userObj); },
       handleCloudDiariesUpdate
     );
-
-    // Subscribe to Teachers Directory for Super Admin
-    if (window.RaonFirebase.subscribeToTeachersFirestore) {
-      window.RaonFirebase.subscribeToTeachersFirestore((teacherList) => {
-        APP_STATE.registeredTeachers = teacherList || [];
-        if (APP_STATE.isSuperAdmin) {
-          renderSuperAdminPanel();
-        }
-      });
-    }
   }
 
   // Restore Saved Session from LocalStorage
@@ -106,7 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error loading saved user:', e);
     }
   } else {
-    // Default fallback initial portal prompt
     updateUserUI();
   }
 
@@ -124,7 +108,6 @@ function handleCloudDiariesUpdate(cloudList) {
   renderClassWeather();
   renderHistoryCalendar();
   if (APP_STATE.isTeacherMode) renderTeacherFeed();
-  if (APP_STATE.isSuperAdmin) renderSuperAdminPanel();
 }
 
 // ==========================================================================
@@ -150,7 +133,7 @@ function initClock() {
 }
 
 // ==========================================================================
-// 2. Multi-Class Navigation & Back Button System (Login Session Preserved)
+// 2. Navigation & Smart Back Button System (Login Session Preserved)
 // ==========================================================================
 function switchTab(tabId, pushHistory = true) {
   if (pushHistory) {
@@ -182,7 +165,6 @@ function switchTab(tabId, pushHistory = true) {
   if (tabId === 'tab-class-weather') renderClassWeather();
   if (tabId === 'tab-history') renderHistoryCalendar();
   if (tabId === 'tab-teacher-dashboard') renderTeacherFeed();
-  if (tabId === 'tab-super-admin') renderSuperAdminPanel();
 }
 
 // Smart Back Navigation (Preserves User Login Session Always!)
@@ -198,27 +180,48 @@ function goBack() {
 }
 
 // ==========================================================================
-// 3. User Session & Login UI Management
+// 3. Google OAuth & User Session Management
 // ==========================================================================
+async function handleGooglePopupLogin() {
+  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+    try {
+      const user = await window.RaonFirebase.loginWithFirebaseGoogle();
+      if (user) {
+        const isTeacherAccount = user.email && user.email.toLowerCase().trim() === 'gusals0432@gmail.com';
+        const userObj = {
+          name: isTeacherAccount ? '권현민 선생님' : (user.displayName || '라온반 학생'),
+          email: user.email || '',
+          avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.displayName || 'Student')}`,
+          isGoogleAuth: true,
+          isTeacher: isTeacherAccount
+        };
+        setLoggedInUser(userObj);
+        closeLoginModal();
+        return;
+      }
+    } catch (err) {
+      console.warn("Firebase 팝업 로그인 취소 또는 오류:", err);
+    }
+  }
+  openLoginModal();
+}
+
+function openLoginModal() {
+  document.getElementById('loginModal').classList.remove('hidden');
+}
+
+function closeLoginModal() {
+  document.getElementById('loginModal').classList.add('hidden');
+}
+
 function setLoggedInUser(userObj) {
   if (!userObj) return;
 
-  // Check if Super Admin (gusals0432@gmail.com)
-  const isSuperAdminEmail = userObj.email && userObj.email.toLowerCase().trim() === 'gusals0432@gmail.com';
-  
-  if (isSuperAdminEmail) {
-    userObj.isSuperAdmin = true;
-    userObj.isTeacher = true;
-    userObj.role = 'super_admin';
-    userObj.schoolName = userObj.schoolName || '새뜸초등학교';
-    userObj.grade = userObj.grade || '6';
-    userObj.classNum = userObj.classNum || '1';
-    userObj.classCode = userObj.classCode || 'MASTER-ADMIN';
-  }
+  const isTeacherAccount = userObj.email && userObj.email.toLowerCase().trim() === 'gusals0432@gmail.com';
+  userObj.isTeacher = isTeacherAccount;
 
   APP_STATE.currentUser = userObj;
-  APP_STATE.isTeacherMode = !!(userObj.isTeacher || userObj.isSuperAdmin);
-  APP_STATE.isSuperAdmin = !!isSuperAdminEmail;
+  APP_STATE.isTeacherMode = isTeacherAccount;
 
   localStorage.setItem('raon_current_user', JSON.stringify(userObj));
   updateUserUI();
@@ -229,236 +232,62 @@ function setLoggedInUser(userObj) {
 }
 
 function updateUserUI() {
-  const btnPortalOpen = document.getElementById('btnPortalOpen');
+  const btnGoogleLogin = document.getElementById('btnGoogleLogin');
   const userProfileBadge = document.getElementById('userProfileBadge');
   const userNameText = document.getElementById('userNameText');
   const userEmailText = document.getElementById('userEmailText');
   const userAvatarImg = document.getElementById('userAvatarImg');
   const greetingStudentName = document.getElementById('greetingStudentName');
-  const welcomeSubText = document.getElementById('welcomeSubText');
-
   const tabTeacherNav = document.getElementById('tabTeacherNav');
-  const tabSuperAdminNav = document.getElementById('tabSuperAdminNav');
-
-  const headerSchoolTitle = document.getElementById('headerSchoolTitle');
-  const headerClassSubTitle = document.getElementById('headerClassSubTitle');
-  const tabClassWeatherText = document.getElementById('tabClassWeatherText');
 
   if (APP_STATE.currentUser) {
-    btnPortalOpen.classList.add('hidden');
+    btnGoogleLogin.classList.add('hidden');
     userProfileBadge.classList.remove('hidden');
 
-    const roleTag = APP_STATE.isSuperAdmin ? '👑 최종관리자' : (APP_STATE.currentUser.isTeacher ? '👩‍🏫 담임교사' : '👨‍🎓 학생');
-    const classInfoTag = APP_STATE.currentUser.classCode ? ` | ${APP_STATE.currentUser.schoolName || ''} ${APP_STATE.currentUser.grade || ''}-${APP_STATE.currentUser.classNum || ''} (코드:${APP_STATE.currentUser.classCode})` : '';
-
-    userNameText.textContent = `${APP_STATE.currentUser.name} (${roleTag})`;
-    userEmailText.textContent = (APP_STATE.currentUser.email || '') + classInfoTag;
-    userAvatarImg.src = APP_STATE.currentUser.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(APP_STATE.currentUser.name)}`;
+    userNameText.textContent = APP_STATE.currentUser.name;
+    userEmailText.textContent = APP_STATE.currentUser.email;
+    userAvatarImg.src = APP_STATE.currentUser.avatar;
 
     if (greetingStudentName) greetingStudentName.textContent = APP_STATE.currentUser.name;
-    if (welcomeSubText) welcomeSubText.textContent = `${APP_STATE.currentUser.schoolName || ''} ${APP_STATE.currentUser.grade || ''}학년 ${APP_STATE.currentUser.classNum || ''}반 교실의 아침 감정을 기록하세요.`;
 
-    if (headerSchoolTitle) headerSchoolTitle.textContent = APP_STATE.currentUser.schoolName ? `${APP_STATE.currentUser.schoolName} ${APP_STATE.currentUser.grade}-${APP_STATE.currentUser.classNum}` : '전국 아침 마음 일기장';
-    if (headerClassSubTitle) headerClassSubTitle.textContent = `코드: ${APP_STATE.currentUser.classCode || '통합'} · 아침 마음 일기장`;
-    if (tabClassWeatherText) tabClassWeatherText.textContent = `${APP_STATE.currentUser.grade || ''}-${APP_STATE.currentUser.classNum || ''}반 마음 날씨`;
+    const isTeacherAccount = APP_STATE.currentUser.isTeacher || 
+      (APP_STATE.currentUser.email && APP_STATE.currentUser.email.toLowerCase().trim() === 'gusals0432@gmail.com');
 
-    // Show/Hide Teacher Dashboard & Super Admin Tabs based on role
-    if (APP_STATE.isSuperAdmin) {
+    if (isTeacherAccount) {
+      APP_STATE.isTeacherMode = true;
       if (tabTeacherNav) tabTeacherNav.classList.remove('hidden');
-      if (tabSuperAdminNav) tabSuperAdminNav.classList.remove('hidden');
-    } else if (APP_STATE.isTeacherMode) {
-      if (tabTeacherNav) tabTeacherNav.classList.remove('hidden');
-      if (tabSuperAdminNav) tabSuperAdminNav.classList.add('hidden');
+      switchTab('tab-teacher-dashboard');
     } else {
+      APP_STATE.isTeacherMode = false;
       if (tabTeacherNav) tabTeacherNav.classList.add('hidden');
-      if (tabSuperAdminNav) tabSuperAdminNav.classList.add('hidden');
     }
 
     updateStreakCounter();
   } else {
-    btnPortalOpen.classList.remove('hidden');
+    btnGoogleLogin.classList.remove('hidden');
     userProfileBadge.classList.add('hidden');
     if (tabTeacherNav) tabTeacherNav.classList.add('hidden');
-    if (tabSuperAdminNav) tabSuperAdminNav.classList.add('hidden');
-    if (greetingStudentName) greetingStudentName.textContent = '학생';
+    if (greetingStudentName) greetingStudentName.textContent = '라온반 학생';
   }
 }
 
 function handleLogout() {
-  if (confirm('로그아웃 하시겠습니까? 세션이 해제되고 메인 포털 화면으로 이동합니다.')) {
+  if (confirm('로그아웃 하시겠습니까?')) {
     APP_STATE.currentUser = null;
     APP_STATE.isTeacherMode = false;
-    APP_STATE.isSuperAdmin = false;
     localStorage.removeItem('raon_current_user');
-    
+
     if (window.RaonFirebase && window.RaonFirebase.isReady()) {
       window.RaonFirebase.logoutFirebase().catch(e => console.warn(e));
     }
 
     updateUserUI();
-    openLoginPortalModal();
+    switchTab('tab-write');
   }
 }
 
 // ==========================================================================
-// 4. Portal Modals & Role Sign-in Handling
-// ==========================================================================
-function openLoginPortalModal() {
-  document.getElementById('loginPortalModal').classList.remove('hidden');
-}
-
-function closeLoginPortalModal() {
-  document.getElementById('loginPortalModal').classList.add('hidden');
-}
-
-function openStudentLoginModal() {
-  closeLoginPortalModal();
-  document.getElementById('studentLoginModal').classList.remove('hidden');
-}
-
-function closeStudentLoginModal() {
-  document.getElementById('studentLoginModal').classList.add('hidden');
-}
-
-function openTeacherSignupModal() {
-  closeLoginPortalModal();
-  document.getElementById('teacherSignupModal').classList.remove('hidden');
-}
-
-function closeTeacherSignupModal() {
-  document.getElementById('teacherSignupModal').classList.add('hidden');
-}
-
-function openTeacherCodeWelcomeModal() {
-  document.getElementById('teacherCodeWelcomeModal').classList.remove('hidden');
-}
-
-function closeTeacherCodeWelcomeModal() {
-  document.getElementById('teacherCodeWelcomeModal').classList.add('hidden');
-  switchTab('tab-teacher-dashboard');
-}
-
-// Helper function to generate unique Class Code (e.g. SAET-601-X82)
-function generateClassCode(schoolName, grade, classNum) {
-  let prefix = 'RAON';
-  if (schoolName) {
-    const clean = schoolName.replace(/초등학교|초/g, '').trim();
-    prefix = clean.substring(0, 3).toUpperCase() || 'RAON';
-  }
-  const randSuffix = Math.floor(100 + Math.random() * 900);
-  return `${prefix}-${grade}0${classNum}-${randSuffix}`;
-}
-
-// Student Login Submission (Real Name & Class Code Verification)
-function handleStudentLoginSubmit(e) {
-  e.preventDefault();
-  const schoolName = document.getElementById('studentSchoolInput').value.trim();
-  const grade = document.getElementById('studentGradeSelect').value;
-  const classNum = document.getElementById('studentClassSelect').value;
-  const realName = document.getElementById('studentNameInput').value.trim();
-  const classCode = document.getElementById('studentClassCodeInput').value.trim().toUpperCase();
-
-  if (!schoolName || !realName || !classCode) {
-    alert('학교명, 학생 실명, 그리고 선생님께 받은 학급 코드를 모두 입력해 주세요.');
-    return;
-  }
-
-  if (realName.length < 2) {
-    alert('⚠️ 닉네임 사용은 금지됩니다. 2글자 이상의 실명을 정확히 입력해 주세요.');
-    return;
-  }
-
-  const userObj = {
-    name: realName,
-    email: `student_${Date.now()}@${classCode.toLowerCase()}.es.kr`,
-    avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(realName)}`,
-    role: 'student',
-    schoolName: schoolName,
-    grade: grade,
-    classNum: classNum,
-    classCode: classCode,
-    isGoogleAuth: false
-  };
-
-  setLoggedInUser(userObj);
-  closeStudentLoginModal();
-  alert(`👋 ${schoolName} ${grade}학년 ${classNum}반 ${realName} 학생님 환영합니다!`);
-  switchTab('tab-write');
-}
-
-// Teacher Google Login Trigger for Signup
-async function handleTeacherGoogleAuth() {
-  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
-    try {
-      const user = await window.RaonFirebase.loginWithFirebaseGoogle();
-      if (user) {
-        APP_STATE.tempGoogleTeacherEmail = user.email || '';
-        APP_STATE.tempGoogleTeacherAvatar = user.photoURL || '';
-        document.getElementById('teacherNameInput').value = user.displayName || '';
-        document.getElementById('teacherGoogleBtnText').textContent = `✅ 구글 인증 완료 (${user.email})`;
-        alert(`구글 계정(${user.email}) 인증에 성공했습니다! 소속 학교 및 학반 정보를 입력 후 학반 생성을 완료해 주세요.`);
-        return;
-      }
-    } catch (err) {
-      console.warn("Teacher Google auth popup error:", err);
-    }
-  }
-}
-
-// Teacher Signup & Auto Class Code Generation Submission
-function handleTeacherSignupSubmit(e) {
-  e.preventDefault();
-  const schoolName = document.getElementById('teacherSchoolInput').value.trim();
-  const grade = document.getElementById('teacherGradeSelect').value;
-  const classNum = document.getElementById('teacherClassSelect').value;
-  const realName = document.getElementById('teacherNameInput').value.trim();
-
-  if (!schoolName || !realName) {
-    alert('학교명과 담임 교사 실명을 모두 입력해 주세요.');
-    return;
-  }
-
-  const generatedCode = generateClassCode(schoolName, grade, classNum);
-  const teacherEmail = APP_STATE.tempGoogleTeacherEmail || `teacher_${Date.now()}@${schoolName.toLowerCase()}.es.kr`;
-
-  const teacherUser = {
-    name: realName + ' 선생님',
-    email: teacherEmail,
-    avatar: APP_STATE.tempGoogleTeacherAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(realName)}`,
-    role: 'teacher',
-    isTeacher: true,
-    schoolName: schoolName,
-    grade: grade,
-    classNum: classNum,
-    classCode: generatedCode,
-    status: 'approved' // 즉시 자동 승인
-  };
-
-  // Register Teacher & Class to Firestore
-  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
-    window.RaonFirebase.registerTeacherAndClass(teacherUser).catch(err => console.warn(err));
-  }
-
-  setLoggedInUser(teacherUser);
-  closeTeacherSignupModal();
-
-  // Show Welcome Modal with generated Class Code
-  document.getElementById('displayGeneratedClassCode').textContent = generatedCode;
-  document.getElementById('teacherCodeWelcomeText').textContent = `${schoolName} ${grade}학년 ${classNum}반 (${realName} 선생님) 학반이 즉시 자동 승인 생성되었습니다. 아래 초대 코드를 학생들에게 공유하세요!`;
-  openTeacherCodeWelcomeModal();
-}
-
-function copyGeneratedClassCode() {
-  const code = document.getElementById('displayGeneratedClassCode').textContent;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(code).then(() => alert(`📋 학급 초대 코드 [ ${code} ]가 클립보드에 복사되었습니다!\n학생들에게 전달하여 학급 접속에 사용하게 해주세요.`));
-  } else {
-    alert(`📋 초대 코드: ${code}`);
-  }
-}
-
-// ==========================================================================
-// 5. Emotion Selection & Form Submission Logic
+// 4. Emotion Selection & Form Submission Logic
 // ==========================================================================
 function selectEmotion(emotionKey) {
   APP_STATE.selectedEmotion = emotionKey;
@@ -555,8 +384,8 @@ function handleDiarySubmit(e) {
   e.preventDefault();
 
   if (!APP_STATE.currentUser) {
-    alert('일기 작성을 위해 먼저 학생 또는 교사 계정으로 로그인해 주세요.');
-    openLoginPortalModal();
+    alert('마음일기 작성을 위해 먼저 구글 계정으로 로그인해 주세요.');
+    handleGooglePopupLogin();
     return;
   }
 
@@ -588,10 +417,6 @@ function handleDiarySubmit(e) {
       email: APP_STATE.currentUser.email,
       avatar: APP_STATE.currentUser.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(APP_STATE.currentUser.name)}`
     },
-    schoolName: APP_STATE.currentUser.schoolName || '새뜸초등학교',
-    grade: APP_STATE.currentUser.grade || '6',
-    classNum: APP_STATE.currentUser.classNum || '1',
-    classCode: APP_STATE.currentUser.classCode || 'RAON-601',
     emotion: APP_STATE.selectedEmotion,
     subTags: APP_STATE.selectedSubTags,
     intensity: APP_STATE.selectedIntensity,
@@ -690,7 +515,6 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
-// Helper to escape HTML text
 function escapeHtml(str) {
   if (!str) return '';
   return String(str)
@@ -702,31 +526,23 @@ function escapeHtml(str) {
 }
 
 // ==========================================================================
-// 6. Classroom Weather & Class Data Filtering
+// 5. Classroom Morning Weather Visualizer
 // ==========================================================================
 function renderClassWeather() {
   const diaries = getStoredDiaries();
-  const user = APP_STATE.currentUser;
 
-  // Filter diaries for CURRENT CLASS ONLY
-  const classDiaries = diaries.filter(d => {
+  const todayDiaries = diaries.filter(d => {
     if (!d) return false;
     const isShared = (d.teacherOnly !== true && d.teacherOnly !== 'true');
-    if (!isShared) return false;
-
-    // Filter by Class Code or School-Grade-ClassNum
-    if (user && user.classCode) {
-      return d.classCode === user.classCode || (d.schoolName === user.schoolName && d.grade === user.grade && d.classNum === user.classNum);
-    }
-    return true; // Default show all if public demo
+    return isShared;
   });
 
   const counts = { joy: 0, calm: 0, anxious: 0, sad: 0, angry: 0 };
-  classDiaries.forEach(d => {
+  todayDiaries.forEach(d => {
     if (counts[d.emotion] !== undefined) counts[d.emotion]++;
   });
 
-  const total = classDiaries.length || 1;
+  const total = todayDiaries.length || 1;
 
   // Update Stat Cards
   document.getElementById('statJoyCount').textContent = `${counts.joy}명 (${Math.round(counts.joy/total*100)}%)`;
@@ -756,14 +572,14 @@ function renderClassWeather() {
   if (feedGrid) {
     feedGrid.innerHTML = '';
 
-    if (classDiaries.length === 0) {
-      feedGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 30px; color: #94a3b8;">아직 우리 반에 공유된 마음 일기가 없습니다. 첫 번째 일기를 공유해보세요! 🌟</div>`;
+    if (todayDiaries.length === 0) {
+      feedGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 30px; color: #94a3b8;">아직 오늘 공유된 라온반 일기가 없습니다. 첫 번째 일기를 작성해 보세요! 🌟</div>`;
       return;
     }
 
-    classDiaries.forEach(entry => {
+    todayDiaries.forEach(entry => {
       if (!entry) return;
-      const userName = (entry.user && entry.user.name) || entry.userName || '학생';
+      const userName = (entry.user && entry.user.name) || entry.userName || '라온반 학생';
       const userAvatar = (entry.user && entry.user.avatar) || entry.userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userName)}`;
       const emotionData = EMOTIONS_CONFIG[entry.emotion] || EMOTIONS_CONFIG.joy;
 
@@ -809,7 +625,7 @@ function handleCheer(entryId, btn) {
 }
 
 // ==========================================================================
-// 7. Calendar & History View
+// 6. Calendar & History View
 // ==========================================================================
 function renderHistoryCalendar() {
   const monthTitle = document.getElementById('calendarMonthTitle');
@@ -940,54 +756,30 @@ function updateStreakCounter() {
 }
 
 // ==========================================================================
-// 8. Teacher Dashboard Mode
+// 7. Teacher Dashboard Mode (gusals0432@gmail.com)
 // ==========================================================================
 function renderTeacherFeed() {
   const grid = document.getElementById('teacherEntriesGrid');
-  const banner = document.getElementById('teacherClassBanner');
-  const titleEl = document.getElementById('teacherDashTitle');
   if (!grid) return;
-
-  const user = APP_STATE.currentUser;
-
-  if (banner && user) {
-    banner.innerHTML = `
-      <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 16px 20px; border-radius: 12px; margin-bottom: 20px;">
-        <div style="font-size: 0.9rem; opacity: 0.9;">🏫 소속 담임 학학급 정보</div>
-        <strong style="font-size: 1.4rem; font-family: 'Jua';">${user.schoolName || ''} ${user.grade || ''}학년 ${user.classNum || ''}반 (${user.name})</strong>
-        <div style="margin-top: 6px; font-size: 0.9rem; background: rgba(255,255,255,0.2); display: inline-block; padding: 4px 12px; border-radius: 20px;">
-          🔑 학급 초대 코드: <strong style="color: #fef08a;">${user.classCode || '통합'}</strong>
-        </div>
-      </div>
-    `;
-  }
 
   const filterEmotion = document.getElementById('teacherEmotionFilter') ? document.getElementById('teacherEmotionFilter').value : 'all';
   const diaries = getStoredDiaries();
 
-  let filtered = diaries.filter(d => {
-    if (!d) return false;
-    if (APP_STATE.isSuperAdmin) return true; // Super admin sees all
-    if (user && user.classCode) {
-      return d.classCode === user.classCode || (d.schoolName === user.schoolName && d.grade === user.grade && d.classNum === user.classNum);
-    }
-    return true;
-  });
-
+  let filtered = diaries;
   if (filterEmotion !== 'all') {
-    filtered = filtered.filter(d => d.emotion === filterEmotion);
+    filtered = diaries.filter(d => d.emotion === filterEmotion);
   }
 
   grid.innerHTML = '';
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; padding:40px; color:#94a3b8;">학급 학생 일기 내역이 없거나 조건에 해당하는 일기가 없습니다.</p>`;
+    grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; padding:40px; color:#94a3b8;">해당하는 라온반 학생 일기 내역이 없습니다.</p>`;
     return;
   }
 
   filtered.forEach(entry => {
     if (!entry) return;
-    const userName = (entry.user && entry.user.name) || entry.userName || '학생';
+    const userName = (entry.user && entry.user.name) || entry.userName || '라온반 학생';
     const userEmail = (entry.user && entry.user.email) || entry.userEmail || '';
     const userAvatar = (entry.user && entry.user.avatar) || entry.userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userName)}`;
     const emo = EMOTIONS_CONFIG[entry.emotion] || EMOTIONS_CONFIG.joy;
@@ -1004,7 +796,7 @@ function renderTeacherFeed() {
         </div>
         <span>${emo.emoji} ${emo.title}</span>
       </div>
-      <div style="font-size:0.8rem; color:#64748b;">${entry.date || ''} ${entry.time || ''} | 강도: ${entry.intensity || 3}단계 | 코드: ${entry.classCode || '-'}</div>
+      <div style="font-size:0.8rem; color:#64748b;">${entry.date || ''} ${entry.time || ''} | 강도: ${entry.intensity || 3}단계</div>
       <h5 style="font-family:'Jua'; font-size:1.1rem; margin-top:4px;">${escapeHtml(entry.title || '')}</h5>
       <p style="font-size:0.95rem; color:#334155;">${escapeHtml(entry.content || '')}</p>
       ${entry.teacherComment ? `<div style="background:#f3e8ff; border:1px solid #c084fc; padding:8px 12px; border-radius:10px; font-size:0.88rem; color:#6b21a8;"><strong>👩‍🏫 선생님 피드백:</strong> ${escapeHtml(entry.teacherComment)}</div>` : ''}
@@ -1065,52 +857,4 @@ function deleteDiaryByTeacher(entryId, studentName) {
   renderHistoryCalendar();
 
   alert('해당 마음일기가 삭제되었습니다.');
-}
-
-// ==========================================================================
-// 9. Super Admin Master Control Center (gusals0432@gmail.com)
-// ==========================================================================
-function renderSuperAdminPanel() {
-  if (!APP_STATE.isSuperAdmin) return;
-
-  const tableBody = document.getElementById('superAdminTeacherTableBody');
-  const statClassEl = document.getElementById('statSuperClassCount');
-  const statTeacherEl = document.getElementById('statSuperTeacherCount');
-  const statDiaryEl = document.getElementById('statSuperDiaryCount');
-
-  const teachers = APP_STATE.registeredTeachers || [];
-  const diaries = getStoredDiaries();
-
-  // Calculate unique classes
-  const classSet = new Set();
-  teachers.forEach(t => {
-    if (t.schoolName && t.grade && t.classNum) {
-      classSet.add(`${t.schoolName}_${t.grade}_${t.classNum}`);
-    }
-  });
-
-  if (statClassEl) statClassEl.textContent = `${classSet.size}개 학반`;
-  if (statTeacherEl) statTeacherEl.textContent = `${teachers.length}명 교사`;
-  if (statDiaryEl) statDiaryEl.textContent = `${diaries.length}건 일기`;
-
-  if (tableBody) {
-    tableBody.innerHTML = '';
-    if (teachers.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 24px; color:#94a3b8;">가입된 담임 교사 내역이 없습니다. 교사 가입 시 여기에 자동으로 표시됩니다.</td></tr>`;
-      return;
-    }
-
-    teachers.forEach(t => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><strong>${escapeHtml(t.name || '교사')}</strong></td>
-        <td>${escapeHtml(t.schoolName || '-')}</td>
-        <td>${t.grade || '-'}학년 ${t.classNum || '-'}반</td>
-        <td><span class="code-pill">${t.classCode || '-'}</span></td>
-        <td>${escapeHtml(t.email || '-')}</td>
-        <td><span style="color:#10b981; font-weight:bold;">● 즉시 자동 승인됨</span></td>
-      `;
-      tableBody.appendChild(tr);
-    });
-  }
 }
