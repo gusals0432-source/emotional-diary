@@ -33,14 +33,14 @@ const getFirebaseConfig = () => {
     try { return JSON.parse(saved); } catch (e) {}
   }
 
-  // Placeholder Config (Replace with your Firebase Console Project Settings)
+  // Saettum Raon Diary Firebase Project Configuration
   return {
-    apiKey: "YOUR_FIREBASE_API_KEY",
+    apiKey: "AIzaSyDrKzcsiu454k_56EeJRZG5yOCEJDJZN-U",
     authDomain: "saettum-raon-diary.firebaseapp.com",
     projectId: "saettum-raon-diary",
-    storageBucket: "saettum-raon-diary.appspot.com",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:abcdef123456"
+    storageBucket: "saettum-raon-diary.firebasestorage.app",
+    messagingSenderId: "382734329080",
+    appId: "1:382734329080:web:338e5b3fc0179ede35c70d"
   };
 };
 
