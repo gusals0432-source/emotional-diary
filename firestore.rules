@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 마음 일기 컬렉션 보안 규칙 (사용자 데이터 보안 분리)
+    match /diaries/{diaryId} {
+      
+      // 읽기 권한:
+      // 1) 학급 공유 설정(shareClass == true)된 일기
+      // 2) 내가 작성한 일기 (작성자 본인)
+      // 3) 담임선생님 계정 (teacher / admin 권한 이메일)
+      allow read: if request.auth != null && (
+        resource.data.shareClass == true ||
+        resource.data.user.email == request.auth.token.email ||
+        request.auth.token.email.matches('.*teacher.*') ||
+        request.auth.token.email.matches('.*admin.*')
+      );
+      
+      // 작성 권한: 인증된 구글 로그인 사용자 본인
+      allow create: if request.auth != null && 
+        request.resource.data.user.email == request.auth.token.email;
+        
+      // 수정/업데이트 권한: 본인 일기 수정 또는 선생님 피드백/응원 하트 증가
+      allow update: if request.auth != null && (
+        resource.data.user.email == request.auth.token.email ||
+        request.auth.token.email.matches('.*teacher.*') ||
+        request.auth.token.email.matches('.*admin.*') ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cheersCount'])
+      );
+      
+      // 삭제 권한: 본인 또는 선생님만 가능
+      allow delete: if request.auth != null && (
+        resource.data.user.email == request.auth.token.email ||
+        request.auth.token.email.matches('.*teacher.*')
+      );
+    }
+  }
+}
