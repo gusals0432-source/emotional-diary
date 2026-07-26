@@ -174,7 +174,7 @@ export function subscribeToDiariesFirestore(callback) {
   return onSnapshot(q, (snapshot) => {
     const list = [];
     snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() });
+      list.push({ ...docSnap.data(), id: docSnap.id });
     });
     // Sort locally by date and time desc
     list.sort((a, b) => {

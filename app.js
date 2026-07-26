@@ -647,9 +647,8 @@ function renderClassWeather() {
   const utcTodayStr = new Date().toISOString().split('T')[0];
 
   const todayDiaries = diaries.filter(d => {
-    const isToday = (d.date === todayStr || d.date === utcTodayStr || !d.date);
-    const isShared = (d.shareClass !== false && d.shareClass !== 'false' && !d.teacherOnly);
-    return isToday && isShared;
+    const isShared = (d.teacherOnly !== true && d.teacherOnly !== 'true');
+    return isShared;
   });
 
   const counts = { joy: 0, calm: 0, anxious: 0, sad: 0, angry: 0 };
@@ -988,12 +987,18 @@ function deleteDiaryByTeacher(entryId, studentName) {
 
   // Delete from Firestore
   if (window.RaonFirebase && window.RaonFirebase.isReady()) {
-    window.RaonFirebase.deleteDiaryFromFirestore(entryId).catch(err => {
+    window.RaonFirebase.deleteDiaryFromFirestore(entryId).then(() => {
+      console.log("🔥 Firestore 클라우드 삭제 완료 ID:", entryId);
+    }).catch(err => {
       console.warn("Firestore 삭제 실패:", err);
     });
   }
 
-  // Delete from LocalStorage
+  // Immediately filter out from in-memory state & local storage
+  if (APP_STATE.firestoreDiaries && Array.isArray(APP_STATE.firestoreDiaries)) {
+    APP_STATE.firestoreDiaries = APP_STATE.firestoreDiaries.filter(d => d.id !== entryId);
+  }
+
   let diaries = getStoredDiaries();
   diaries = diaries.filter(d => d.id !== entryId);
   localStorage.setItem('raon_mind_diaries', JSON.stringify(diaries));
@@ -1002,5 +1007,5 @@ function deleteDiaryByTeacher(entryId, studentName) {
   renderClassWeather();
   renderHistoryCalendar();
 
-  alert('해당 마음일기가 삭제되었습니다.');
+  alert('해당 마음일기가 완전히 삭제되었습니다.');
 }
