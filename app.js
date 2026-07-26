@@ -96,6 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderClassWeather();
   renderHistoryCalendar();
+
+  // Initialize Default Selected Emotion & Writing Form
+  selectEmotion('joy');
 });
 
 // Handle Live Cloud Firestore Real-time Updates
