@@ -12,7 +12,8 @@ const APP_STATE = {
   selectedSticker: '⭐',
   isTeacherMode: false,
   currentCalendarDate: new Date(),
-  customClientId: localStorage.getItem('raon_google_client_id') || ''
+  customClientId: localStorage.getItem('raon_google_client_id') || '',
+  firestoreDiaries: null
 };
 
 // --- Emotion Configuration Data ---
@@ -68,6 +69,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initClock();
   initAuth();
   initFormListeners();
+
+  // Initialize Real-time Firestore Cloud Synchronization
+  if (window.RaonFirebase && window.RaonFirebase.initFirebaseService) {
+    window.RaonFirebase.initFirebaseService(
+      (userObj) => { if (userObj && !APP_STATE.currentUser) setLoggedInUser(userObj); },
+      handleCloudDiariesUpdate
+    );
+  }
+
   renderClassWeather();
   renderHistoryCalendar();
   
@@ -85,6 +95,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 });
+
+// Handle Live Cloud Firestore Real-time Updates
+function handleCloudDiariesUpdate(cloudList) {
+  APP_STATE.firestoreDiaries = cloudList || [];
+  localStorage.setItem('raon_mind_diaries', JSON.stringify(APP_STATE.firestoreDiaries));
+  
+  renderClassWeather();
+  renderHistoryCalendar();
+  if (APP_STATE.isTeacherMode) {
+    renderTeacherFeed();
+  }
+}
 
 // ==========================================================================
 // 1. Clock & Date Display
@@ -524,6 +546,9 @@ function handleDiarySubmit(e) {
 }
 
 function getStoredDiaries() {
+  if (APP_STATE.firestoreDiaries && Array.isArray(APP_STATE.firestoreDiaries)) {
+    return APP_STATE.firestoreDiaries;
+  }
   const data = localStorage.getItem('raon_mind_diaries');
   if (!data) return getInitialMockDiaries();
   try {

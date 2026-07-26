@@ -151,17 +151,20 @@ export async function saveDiaryToFirestore(entryData) {
 export function subscribeToDiariesFirestore(callback) {
   if (!isFirebaseReady || !db) return;
 
-  const q = query(
-    collection(db, "diaries"),
-    orderBy("createdTimestamp", "desc"),
-    limit(50)
-  );
+  const q = collection(db, "diaries");
 
   return onSnapshot(q, (snapshot) => {
     const list = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() });
     });
+    // Sort locally by date and time desc
+    list.sort((a, b) => {
+      const dateA = (a.date || '') + ' ' + (a.time || '');
+      const dateB = (b.date || '') + ' ' + (b.time || '');
+      return dateB.localeCompare(dateA);
+    });
+    console.log("🔥 Firestore 클라우드 실시간 일기 동기화 수신:", list.length, "건");
     callback(list);
   }, (err) => {
     console.error("Firestore 실시간 구독 오류:", err);
