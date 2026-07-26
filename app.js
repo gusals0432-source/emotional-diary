@@ -98,8 +98,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Handle Live Cloud Firestore Real-time Updates
 function handleCloudDiariesUpdate(cloudList) {
-  APP_STATE.firestoreDiaries = cloudList || [];
-  localStorage.setItem('raon_mind_diaries', JSON.stringify(APP_STATE.firestoreDiaries));
+  if (Array.isArray(cloudList) && cloudList.length > 0) {
+    APP_STATE.firestoreDiaries = cloudList;
+    const existingLocal = getStoredDiaries();
+    const map = new Map();
+    existingLocal.forEach(item => { if (item && (item.id || item.title)) map.set(item.id || `${item.date}_${item.time}_${item.title}`, item); });
+    cloudList.forEach(item => { if (item && (item.id || item.title)) map.set(item.id || `${item.date}_${item.time}_${item.title}`, item); });
+    const merged = Array.from(map.values());
+    localStorage.setItem('raon_mind_diaries', JSON.stringify(merged));
+  } else if (cloudList) {
+    APP_STATE.firestoreDiaries = cloudList;
+  }
   
   renderClassWeather();
   renderHistoryCalendar();
@@ -804,23 +813,67 @@ function renderHistoryCalendar() {
       return;
     }
 
-    userDiaries.slice(0, 5).forEach(e => {
+    userDiaries.forEach(e => {
+      if (!e) return;
       const emo = EMOTIONS_CONFIG[e.emotion] || EMOTIONS_CONFIG.joy;
       const item = document.createElement('div');
       item.className = 'history-card';
+      item.style.cssText = "display: flex; align-items: center; justify-content: space-between; padding: 14px; background: #ffffff; border-radius: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);";
+      
+      const isMyEntry = APP_STATE.currentUser && e.user && (e.user.email === APP_STATE.currentUser.email);
+
       item.innerHTML = `
         <div style="display: flex; align-items: center; gap: 14px;">
           <span style="font-size: 2rem;">${emo.emoji}</span>
           <div>
-            <strong style="font-size: 1.05rem;">${escapeHtml(e.title)}</strong>
-            <div style="font-size: 0.82rem; color: #64748b;">${e.date} (${e.time}) · ${emo.title} (${e.intensity}단계)</div>
+            <strong style="font-size: 1.05rem;">${escapeHtml(e.title || '')}</strong>
+            <div style="font-size: 0.82rem; color: #64748b;">${e.date || ''} (${e.time || ''}) · ${emo.title} (${e.intensity || 3}단계)</div>
+            <p style="font-size: 0.9rem; color: #334155; margin-top: 4px;">${escapeHtml(e.content || '')}</p>
           </div>
         </div>
-        <span>${e.sticker || '⭐'}</span>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.5rem;">${e.sticker || '⭐'}</span>
+          ${isMyEntry ? `
+            <button class="btn-delete-entry" style="padding: 6px 12px; font-size: 0.8rem;" onclick="deleteDiaryByUser('${e.id}', '${escapeHtml(e.title || '')}')">
+              <i class="fa-solid fa-trash-can"></i> 삭제
+            </button>
+          ` : ''}
+        </div>
       `;
       historyList.appendChild(item);
     });
   }
+}
+
+// User Self Delete Entry
+function deleteDiaryByUser(entryId, title) {
+  if (!confirm(`[본인 확인] 내가 작성한 마음일기 "${title}"을(를) 정말 삭제하시겠습니까?`)) {
+    return;
+  }
+
+  // Delete from Firestore
+  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+    window.RaonFirebase.deleteDiaryFromFirestore(entryId).then(() => {
+      console.log("🔥 Firestore 본인 작성 일기 클라우드 삭제 완료 ID:", entryId);
+    }).catch(err => {
+      console.warn("Firestore 삭제 실패:", err);
+    });
+  }
+
+  // Delete from in-memory state & local storage
+  if (APP_STATE.firestoreDiaries && Array.isArray(APP_STATE.firestoreDiaries)) {
+    APP_STATE.firestoreDiaries = APP_STATE.firestoreDiaries.filter(d => d.id !== entryId);
+  }
+
+  let diaries = getStoredDiaries();
+  diaries = diaries.filter(d => d.id !== entryId);
+  localStorage.setItem('raon_mind_diaries', JSON.stringify(diaries));
+
+  renderHistoryCalendar();
+  renderClassWeather();
+  if (APP_STATE.isTeacherMode) renderTeacherFeed();
+
+  alert('내가 작성한 마음일기가 완전히 삭제되었습니다.');
 }
 
 function changeMonth(delta) {
