@@ -147,14 +147,22 @@ export async function logoutFirebase() {
 
 // Save Diary Entry to Firestore `diaries` collection
 export async function saveDiaryToFirestore(entryData) {
-  if (!isFirebaseReady || !db) return null;
+  if (!isFirebaseReady || !db) {
+    console.warn("⚠️ Firebase가 아직 준비되지 않아 저장할 수 없습니다.");
+    return null;
+  }
 
-  const docRef = await addDoc(collection(db, "diaries"), {
-    ...entryData,
-    createdTimestamp: serverTimestamp()
-  });
-
-  return docRef.id;
+  try {
+    const docRef = await addDoc(collection(db, "diaries"), {
+      ...entryData,
+      createdTimestamp: serverTimestamp()
+    });
+    console.log("🔥 Firestore 클라우드 성공적으로 저장됨 (ID: " + docRef.id + ")");
+    return docRef.id;
+  } catch (err) {
+    console.error("❌ Firestore 클라우드 저장 실패:", err);
+    throw err;
+  }
 }
 
 // Real-time listener for Class Diaries
