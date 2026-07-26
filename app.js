@@ -250,15 +250,22 @@ function updateUserUI() {
       (APP_STATE.currentUser.email && APP_STATE.currentUser.email.toLowerCase() === 'gusals0432@gmail.com');
 
     if (isTeacherAccount) {
-      // Admin Teacher Account: Show Teacher Mode Toggle Button
-      if (btnModeToggle) btnModeToggle.classList.remove('hidden');
+      // Automatically transition to Teacher Admin Mode
+      APP_STATE.isTeacherMode = true;
+      const contents = document.querySelectorAll('.tab-content');
+      contents.forEach(c => c.classList.remove('active'));
+
+      const teacherDash = document.getElementById('tab-teacher-dashboard');
+      if (teacherDash) {
+        teacherDash.classList.remove('hidden');
+        teacherDash.classList.add('active');
+      }
+      renderTeacherFeed();
     } else {
-      // Non-admin accounts: HIDE Teacher Mode Button Completely & Block Access
-      if (btnModeToggle) btnModeToggle.classList.add('hidden');
-      
-      // If currently on teacher tab, force back to student view
+      // Non-admin Student Account: Hide Teacher Dashboard & Force Student View
       APP_STATE.isTeacherMode = false;
-      document.getElementById('tab-teacher-dashboard').classList.add('hidden');
+      const teacherDash = document.getElementById('tab-teacher-dashboard');
+      if (teacherDash) teacherDash.classList.add('hidden');
       switchTab('tab-write');
     }
 
