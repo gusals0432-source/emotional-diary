@@ -554,16 +554,45 @@ function handleDiarySubmit(e) {
 }
 
 function getStoredDiaries() {
-  if (APP_STATE.firestoreDiaries && Array.isArray(APP_STATE.firestoreDiaries)) {
-    return APP_STATE.firestoreDiaries;
-  }
-  const data = localStorage.getItem('raon_mind_diaries');
-  if (!data) return getInitialMockDiaries();
+  const localDataStr = localStorage.getItem('raon_mind_diaries');
+  let localDiaries = [];
   try {
-    return JSON.parse(data);
+    if (localDataStr) localDiaries = JSON.parse(localDataStr);
   } catch (e) {
-    return getInitialMockDiaries();
+    localDiaries = [];
   }
+
+  const cloudDiaries = (APP_STATE.firestoreDiaries && Array.isArray(APP_STATE.firestoreDiaries)) 
+    ? APP_STATE.firestoreDiaries 
+    : [];
+
+  // Merge cloud & local diaries avoiding duplicates by ID or timestamp+title
+  const combinedMap = new Map();
+  
+  // 1. Local storage entries first
+  localDiaries.forEach(d => {
+    if (d && (d.id || d.title)) {
+      const key = d.id || `${d.date}_${d.time}_${d.title}`;
+      combinedMap.set(key, d);
+    }
+  });
+
+  // 2. Cloud entries (override / merge)
+  cloudDiaries.forEach(d => {
+    if (d && (d.id || d.title)) {
+      const key = d.id || `${d.date}_${d.time}_${d.title}`;
+      combinedMap.set(key, d);
+    }
+  });
+
+  const mergedList = Array.from(combinedMap.values());
+  mergedList.sort((a, b) => {
+    const dateA = (a.date || '') + ' ' + (a.time || '');
+    const dateB = (b.date || '') + ' ' + (b.time || '');
+    return dateB.localeCompare(dateA);
+  });
+
+  return mergedList;
 }
 
 // Initial Data (Empty for production)
