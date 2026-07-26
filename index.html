@@ -50,7 +50,7 @@
       <div class="header-right">
         <!-- Google User Profile / Auth Area -->
         <div id="userAuthArea" class="user-auth-area">
-          <button id="btnGoogleLogin" class="btn-google-login" onclick="openLoginModal()">
+          <button id="btnGoogleLogin" class="btn-google-login" onclick="handleGooglePopupLogin()">
             <img src="https://lh3.googleusercontent.com/COxitduyYXxAVXFTq8VZWBW9xqYxMlhVEy25JaPq4iuTQ0W1s6ptGLAkD0l06nPvu8SsuJGKn5sM7ICX1ainwAc" alt="Google" class="google-icon-img">
             <span>구글 계정 로그인</span>
           </button>
@@ -461,41 +461,10 @@
           </div>
         </div>
 
-        <div class="modal-divider">
-          <span>또는 라온반 테스트 계정으로 바로 시작</span>
-        </div>
-
-        <!-- Quick Demo Accounts for Immediate Classroom Testing -->
-        <div class="demo-accounts-list">
-          <label>클릭하여 빠른 로그인 (테스트용 학생 프로필):</label>
-          <div class="demo-chips-grid">
-            <button class="demo-account-chip" onclick="simulateGoogleLogin('김민준', 'minjun.kim@saettum.es.kr', 'https://api.dicebear.com/7.x/bottts/svg?seed=Minjun')">
-              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Minjun" alt="Minjun">
-              <span>김민준 (minjun.kim@saettum.es.kr)</span>
-            </button>
-
-            <button class="demo-account-chip" onclick="simulateGoogleLogin('이서연', 'seoyeon.lee@saettum.es.kr', 'https://api.dicebear.com/7.x/bottts/svg?seed=Seoyeon')">
-              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Seoyeon" alt="Seoyeon">
-              <span>이서연 (seoyeon.lee@saettum.es.kr)</span>
-            </button>
-
-            <button class="demo-account-chip" onclick="simulateGoogleLogin('박지후', 'jihu.park@saettum.es.kr', 'https://api.dicebear.com/7.x/bottts/svg?seed=Jihu')">
-              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Jihu" alt="Jihu">
-              <span>박지후 (jihu.park@saettum.es.kr)</span>
-            </button>
-
-            <button class="demo-account-chip" onclick="simulateGoogleLogin('최하은', 'haeun.choi@saettum.es.kr', 'https://api.dicebear.com/7.x/bottts/svg?seed=Haeun')">
-              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Haeun" alt="Haeun">
-              <span>최하은 (haeun.choi@saettum.es.kr)</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Custom Email Entry Option -->
         <div class="custom-email-box">
-          <label for="customGoogleName">내 이름 & 구글 이메일 직접 입력:</label>
+          <label for="customGoogleName">구글 계정 이메일 직접 입력:</label>
           <div class="input-row">
-            <input type="text" id="customGoogleName" placeholder="예: 홍길동">
+            <input type="text" id="customGoogleName" placeholder="이름 (예: 홍길동)">
             <input type="email" id="customGoogleEmail" placeholder="id@school.es.kr">
             <button class="btn-secondary" onclick="handleCustomGoogleLogin()">로그인</button>
           </div>

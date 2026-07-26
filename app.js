@@ -127,6 +127,32 @@ function initAuth() {
   };
 }
 
+// Trigger Google Sign-In Popup Centered Window
+async function handleGooglePopupLogin() {
+  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+    try {
+      const user = await window.RaonFirebase.loginWithFirebaseGoogle();
+      if (user) {
+        const userObj = {
+          name: user.displayName || '라온반 학생',
+          email: user.email || '',
+          avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.displayName || 'Student')}`,
+          isGoogleAuth: true,
+          isTeacher: user.email && user.email.toLowerCase() === 'gusals0432@gmail.com'
+        };
+        setLoggedInUser(userObj);
+        closeLoginModal();
+        return;
+      }
+    } catch (err) {
+      console.warn("Firebase 팝업 로그인 취소 또는 오류:", err);
+    }
+  }
+  
+  // Fallback to Login Modal if Popup isn't ready
+  openLoginModal();
+}
+
 // Open / Close Google Login Modal
 function openLoginModal() {
   document.getElementById('loginModal').classList.remove('hidden');
@@ -500,62 +526,9 @@ function getStoredDiaries() {
   }
 }
 
-// Initial Mock Data for Classroom Demonstration
+// Initial Data (Empty for production)
 function getInitialMockDiaries() {
-  const today = new Date().toISOString().split('T')[0];
-  return [
-    {
-      id: 'mock_1',
-      date: today,
-      time: '08:20',
-      user: { name: '이서연', email: 'seoyeon.lee@saettum.es.kr', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Seoyeon' },
-      emotion: 'joy',
-      subTags: ['기대됨 🌟', '신남 🎈'],
-      intensity: 4,
-      categories: ['수업/공부'],
-      title: '오늘 5교시 체육 피구 시간 완전 기대됨!',
-      content: '아침부터 날씨도 너무 좋고 오늘 피구하는 날이라 기분이 짱 좋다. 친구들이랑 재미있게 해야지!',
-      sticker: '⭐',
-      shareClass: true,
-      teacherOnly: false,
-      teacherComment: '서연이 오늘도 활기찬 하루 되자! ⭐',
-      cheersCount: 3
-    },
-    {
-      id: 'mock_2',
-      date: today,
-      time: '08:25',
-      user: { name: '박지후', email: 'jihu.park@saettum.es.kr', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Jihu' },
-      emotion: 'calm',
-      subTags: ['차분함 🍃', '상쾌함 🌿'],
-      intensity: 3,
-      categories: ['등교/날씨'],
-      title: '아침에 걸어오는데 바람이 시원했다',
-      content: '학교 오는 길에 수목원 쪽 바람이 아주 시원했다. 오늘 하루도 차분하게 잘 지내고 싶다.',
-      sticker: '🌿',
-      shareClass: true,
-      teacherOnly: false,
-      teacherComment: null,
-      cheersCount: 1
-    },
-    {
-      id: 'mock_3',
-      date: today,
-      time: '08:28',
-      user: { name: '최하은', email: 'haeun.choi@saettum.es.kr', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Haeun' },
-      emotion: 'anxious',
-      subTags: ['긴장됨 💓', '부담스러움 🎒'],
-      intensity: 4,
-      categories: ['수업/공부'],
-      title: '단원평가 준비를 많이 못해서 걱정이다',
-      content: '오늘 2교시 수학 단원평가인데 어제 연습 문제를 조금밖에 못 풀었다. 실수하지 말고 잘 쳤으면 좋겠다.',
-      sticker: '🍀',
-      shareClass: true,
-      teacherOnly: false,
-      teacherComment: '하은아 열심히 준비했으니 자신감 갖기! 화이팅 🍀',
-      cheersCount: 4
-    }
-  ];
+  return [];
 }
 
 function showSuccessModal() {
