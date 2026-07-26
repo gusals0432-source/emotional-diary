@@ -2,8 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /diaries/{diaryId} {
-      allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow read, write: if request.time < timestamp.date(2026, 12, 31);
     }
   }
 }
