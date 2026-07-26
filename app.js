@@ -534,8 +534,11 @@ function handleDiarySubmit(e) {
 
   // Save to Firebase Firestore if connected
   if (window.RaonFirebase && window.RaonFirebase.isReady()) {
-    window.RaonFirebase.saveDiaryToFirestore(entry).catch(err => {
-      console.warn("Firestore 저장 중 경고:", err);
+    window.RaonFirebase.saveDiaryToFirestore(entry).then((docId) => {
+      console.log("🔥 Firebase 클라우드 DB 저장 성공! DocID:", docId);
+    }).catch(err => {
+      console.error("❌ Firestore 클라우드 저장 실패:", err);
+      alert('⚠️ [Firebase 구글 콘솔 설정 필요]\n클라우드 DB 저장 권한이 차단되었습니다.\nFirebase 웹 콘솔(console.firebase.google.com) > Firestore Database > Rules(규칙) 탭에서 allow read, write: if true; 게시를 적용해 주세요!');
     });
   }
 
