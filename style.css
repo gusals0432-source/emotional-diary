@@ -1197,6 +1197,26 @@ body {
   cursor: pointer;
 }
 
+.btn-delete-entry {
+  background: #fef2f2 !important;
+  color: #ef4444 !important;
+  border: 1px solid #fca5a5 !important;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-delete-entry:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* --- Modals & Overlays --- */
 .modal-overlay {
   position: fixed;

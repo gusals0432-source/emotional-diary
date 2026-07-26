@@ -15,6 +15,7 @@ import {
   collection, 
   addDoc, 
   updateDoc, 
+  deleteDoc,
   doc, 
   onSnapshot, 
   query, 
@@ -173,6 +174,13 @@ export async function saveTeacherCommentToFirestore(docId, commentText) {
   });
 }
 
+// Delete Diary from Firestore
+export async function deleteDiaryFromFirestore(docId) {
+  if (!isFirebaseReady || !db) return;
+  const docRef = doc(db, "diaries", docId);
+  await deleteDoc(docRef);
+}
+
 // Expose to window for global access
 window.RaonFirebase = {
   initFirebaseService,
@@ -182,5 +190,6 @@ window.RaonFirebase = {
   subscribeToDiariesFirestore,
   addCheerToFirestore,
   saveTeacherCommentToFirestore,
+  deleteDiaryFromFirestore,
   isReady: () => isFirebaseReady
 };

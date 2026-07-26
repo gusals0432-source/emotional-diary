@@ -898,6 +898,9 @@ function renderTeacherFeed() {
       <div class="teacher-comment-box">
         <input type="text" id="input_comment_${entry.id}" placeholder="선생님 따뜻한 한마디 남기기...">
         <button onclick="saveTeacherComment('${entry.id}')">전송</button>
+        <button class="btn-delete-entry" onclick="deleteDiaryByTeacher('${entry.id}', '${escapeHtml(entry.user.name)}')">
+          <i class="fa-solid fa-trash-can"></i> 삭제
+        </button>
       </div>
     `;
 
@@ -916,7 +919,37 @@ function saveTeacherComment(entryId) {
   if (idx !== -1) {
     diaries[idx].teacherComment = comment;
     localStorage.setItem('raon_mind_diaries', JSON.stringify(diaries));
+
+    if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+      window.RaonFirebase.saveTeacherCommentToFirestore(entryId, comment).catch(e => console.warn(e));
+    }
+
     renderTeacherFeed();
     alert('선생님 피드백이 저장되었습니다.');
   }
+}
+
+// Teacher Delete Diary Entry
+function deleteDiaryByTeacher(entryId, studentName) {
+  if (!confirm(`[선생님 권한] ${studentName} 학생의 이 마음일기를 정말 삭제하시겠습니까?`)) {
+    return;
+  }
+
+  // Delete from Firestore
+  if (window.RaonFirebase && window.RaonFirebase.isReady()) {
+    window.RaonFirebase.deleteDiaryFromFirestore(entryId).catch(err => {
+      console.warn("Firestore 삭제 실패:", err);
+    });
+  }
+
+  // Delete from LocalStorage
+  let diaries = getStoredDiaries();
+  diaries = diaries.filter(d => d.id !== entryId);
+  localStorage.setItem('raon_mind_diaries', JSON.stringify(diaries));
+
+  renderTeacherFeed();
+  renderClassWeather();
+  renderHistoryCalendar();
+
+  alert('해당 마음일기가 삭제되었습니다.');
 }
