@@ -544,8 +544,15 @@ function escapeHtml(str) {
 function renderClassWeather() {
   const diaries = getStoredDiaries();
 
+  const isTeacher = APP_STATE.isTeacherMode || 
+    (APP_STATE.currentUser && APP_STATE.currentUser.email && APP_STATE.currentUser.email.toLowerCase().trim() === 'gusals0432@gmail.com');
+
   const todayDiaries = diaries.filter(d => {
     if (!d) return false;
+    // 관리자 / 교사는 선생님만 보기 글도 라온반 마음 날씨 탭에서 확인 가능!
+    if (isTeacher) return true;
+    
+    // 학생 계정은 선생님만 보기 글 제외
     const isShared = (d.teacherOnly !== true && d.teacherOnly !== 'true');
     return isShared;
   });
@@ -595,6 +602,7 @@ function renderClassWeather() {
       const userName = (entry.user && entry.user.name) || entry.userName || '라온반 학생';
       const userAvatar = (entry.user && entry.user.avatar) || entry.userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userName)}`;
       const emotionData = EMOTIONS_CONFIG[entry.emotion] || EMOTIONS_CONFIG.joy;
+      const isTeacherOnly = (entry.teacherOnly === true || entry.teacherOnly === 'true');
 
       const card = document.createElement('div');
       card.className = 'feed-card';
@@ -606,6 +614,7 @@ function renderClassWeather() {
             <img src="${userAvatar}" class="feed-avatar" alt="${userName}">
             <span>${userName}</span>
             <span style="font-size: 1.1rem;">${emotionData.emoji}</span>
+            ${isTeacherOnly ? `<span style="background: #f3e8ff; color: #7e22ce; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; font-weight: bold; border: 1px solid #d8b4fe;">🔒 선생님만 보기</span>` : ''}
           </div>
           <span class="feed-time">${entry.time || '방금 전'}</span>
         </div>
