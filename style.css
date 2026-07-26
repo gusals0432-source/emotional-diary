@@ -1646,24 +1646,207 @@ body {
   margin-top: auto;
 }
 
-/* --- Responsive Media Queries --- */
+/* ==========================================================================
+   SMARTPHONE MOBILE OPTIMIZATION MEDIA QUERIES (< 768px & < 480px)
+   - iOS Auto-Zoom Prevention (font-size >= 16px)
+   - Horizontal Scrollable Touch Navigation Bar
+   - 2-Column Responsive Emotion Cards & Stat Badges
+   - High Contrast Touch Targets & Compact Mobile Header
+   ========================================================================== */
 @media (max-width: 768px) {
+  .app-container {
+    padding: 10px 8px !important;
+  }
+
   .app-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 14px 16px !important;
+    gap: 10px !important;
+    border-radius: var(--radius-md) !important;
   }
-  
+
+  .brand {
+    gap: 10px !important;
+  }
+
+  .brand h1 {
+    font-size: 1.3rem !important;
+  }
+
+  .brand .sub-title {
+    font-size: 0.78rem !important;
+  }
+
+  .header-center {
+    display: none !important; /* Hide clock on mobile header to save vertical height */
+  }
+
   .header-right {
-    width: 100%;
-    justify-content: space-between;
-    margin-top: 10px;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-top: 4px !important;
+    gap: 8px !important;
   }
 
-  .emotions-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .btn-back-nav {
+    padding: 6px 12px !important;
+    font-size: 0.85rem !important;
   }
 
+  .btn-google-login {
+    padding: 8px 12px !important;
+    font-size: 0.85rem !important;
+  }
+
+  .user-profile-badge {
+    padding: 4px 10px !important;
+  }
+
+  .user-avatar-img {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .user-name {
+    font-size: 0.82rem !important;
+  }
+
+  .user-email {
+    font-size: 0.7rem !important;
+  }
+
+  /* Touch-friendly horizontal scrollable navigation bar */
   .app-nav {
-    flex-direction: column;
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px !important;
+    padding: 8px 6px !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border-radius: var(--radius-pill) !important;
+    margin: 10px 0 16px 0 !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+
+  .nav-tab {
+    flex: 1 0 auto !important;
+    padding: 10px 16px !important;
+    font-size: 0.92rem !important;
+    white-space: nowrap !important;
+    border-radius: var(--radius-pill) !important;
+    justify-content: center !important;
+    scroll-snap-align: start;
+  }
+
+  .welcome-card {
+    padding: 18px 16px !important;
+    flex-direction: column !alignment: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .welcome-text h2 {
+    font-size: 1.25rem !important;
+  }
+
+  .welcome-text p {
+    font-size: 0.88rem !important;
+  }
+
+  .section-card {
+    padding: 18px 14px !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  .section-header h3 {
+    font-size: 1.1rem !important;
+  }
+
+  /* Prevent Safari input auto-zoom on mobile */
+  input[type="text"],
+  input[type="password"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px !important;
+    padding: 12px 14px !important;
+  }
+
+  .categories-chips, .sticker-selector {
+    gap: 6px !important;
+  }
+
+  .cat-chip, .sticker-btn {
+    padding: 8px 12px !important;
+    font-size: 0.85rem !important;
+  }
+
+  .btn-submit-diary {
+    padding: 14px 20px !important;
+    font-size: 1.05rem !important;
+    width: 100% !important;
+  }
+
+  .calendar-day {
+    min-height: 48px !important;
+    padding: 4px !important;
+  }
+
+  .day-number {
+    font-size: 0.78rem !important;
+  }
+
+  .day-emotion-badge {
+    font-size: 1.05rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .emotions-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .emotion-card {
+    padding: 12px 8px !important;
+  }
+
+  .card-icon {
+    font-size: 2rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  .emotion-card h4 {
+    font-size: 0.95rem !important;
+  }
+
+  .emotion-card p {
+    font-size: 0.72rem !important;
+  }
+
+  .weather-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .weather-stat-card {
+    padding: 10px 8px !important;
+  }
+
+  .stat-icon {
+    font-size: 1.5rem !important;
+  }
+
+  .stat-label {
+    font-size: 0.75rem !important;
+  }
+
+  .stat-value {
+    font-size: 0.9rem !important;
   }
 }
