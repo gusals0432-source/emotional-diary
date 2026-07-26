@@ -24,16 +24,20 @@ import {
   serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// Default / Window / LocalStorage Firebase Configuration
+// Default / Window / LocalStorage / Vercel Environment Variables Firebase Configuration
 const getFirebaseConfig = () => {
-  if (window.FIREBASE_CONFIG) return window.FIREBASE_CONFIG;
+  // 1. Check if Vercel / Build injected environment variables exist
+  if (typeof window !== 'undefined' && window.ENV_FIREBASE_CONFIG) {
+    return window.ENV_FIREBASE_CONFIG;
+  }
 
+  // 2. Check explicitly saved LocalStorage Config
   const saved = localStorage.getItem('raon_firebase_config');
   if (saved) {
     try { return JSON.parse(saved); } catch (e) {}
   }
 
-  // Saettum Raon Diary Firebase Project Configuration
+  // 3. Default Saettum Raon Diary Firebase Project Configuration
   return {
     apiKey: "AIzaSyDrKzcsiu454k_56EeJRZG5yOCEJDJZN-U",
     authDomain: "saettum-raon-diary.firebaseapp.com",
