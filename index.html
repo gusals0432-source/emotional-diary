@@ -277,8 +277,19 @@
       <section id="tab-class-weather" class="tab-content">
         <div class="section-card">
           <div class="section-header">
-            <h3><i class="fa-solid fa-cloud-sun-rain"></i> 오늘 라온반 아침 마음 날씨</h3>
+            <h3><i class="fa-solid fa-cloud-sun-rain"></i> <span id="classWeatherTitle">오늘 라온반 아침 마음 날씨</span></h3>
             <span class="badge-live">● 실시간</span>
+          </div>
+
+          <!-- Date Selector Bar for Class Weather -->
+          <div class="weather-date-picker-bar">
+            <div class="date-picker-group">
+              <label for="classWeatherDateFilter"><i class="fa-solid fa-calendar-day"></i> 마음 날씨 날짜 선택:</label>
+              <input type="date" id="classWeatherDateFilter" onchange="renderClassWeather()">
+            </div>
+            <button class="btn-today-quick" onclick="setWeatherDateToToday()">
+              <i class="fa-solid fa-rotate-left"></i> 오늘 날씨로 보기
+            </button>
           </div>
 
           <!-- Weather Stat Cards -->

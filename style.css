@@ -1485,6 +1485,55 @@ body {
   color: var(--accent-primary);
 }
 
+/* --- Class Weather Date Picker Bar --- */
+.weather-date-picker-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.date-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.date-picker-group input[type="date"] {
+  padding: 8px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.95rem;
+  background: #ffffff;
+}
+
+.btn-today-quick {
+  background: #ffffff;
+  border: 1px solid var(--accent-primary);
+  color: var(--accent-primary);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-family: 'Jua', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-today-quick:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
 /* --- Portal Choice Modal Cards --- */
 .portal-card {
   max-width: 640px !important;

@@ -547,8 +547,22 @@ function renderClassWeather() {
   const isTeacher = APP_STATE.isTeacherMode || 
     (APP_STATE.currentUser && APP_STATE.currentUser.email && APP_STATE.currentUser.email.toLowerCase().trim() === 'gusals0432@gmail.com');
 
-  const todayDiaries = diaries.filter(d => {
+  const dateInput = document.getElementById('classWeatherDateFilter');
+  const todayStr = getTodayDateString();
+  let selectedDate = (dateInput && dateInput.value) ? dateInput.value : todayStr;
+
+  if (dateInput && !dateInput.value) {
+    dateInput.value = selectedDate;
+  }
+
+  // Filter diaries strictly by SELECTED DATE (YYYY-MM-DD)
+  const targetDateDiaries = diaries.filter(d => {
     if (!d) return false;
+
+    // Match Date (YYYY-MM-DD)
+    const entryDate = d.date || (d.createdTimestamp ? d.createdTimestamp.split('T')[0] : '');
+    if (entryDate !== selectedDate) return false;
+    
     // 관리자 / 교사는 선생님만 보기 글도 라온반 마음 날씨 탭에서 확인 가능!
     if (isTeacher) return true;
     
@@ -557,12 +571,22 @@ function renderClassWeather() {
     return isShared;
   });
 
+  // Update Section Header Title with Selected Date
+  const sectionTitleEl = document.getElementById('classWeatherTitle');
+  if (sectionTitleEl) {
+    if (selectedDate === todayStr) {
+      sectionTitleEl.textContent = '오늘 라온반 아침 마음 날씨';
+    } else {
+      sectionTitleEl.textContent = `${selectedDate} 라온반 아침 마음 날씨`;
+    }
+  }
+
   const counts = { joy: 0, calm: 0, anxious: 0, sad: 0, angry: 0 };
-  todayDiaries.forEach(d => {
+  targetDateDiaries.forEach(d => {
     if (counts[d.emotion] !== undefined) counts[d.emotion]++;
   });
 
-  const total = todayDiaries.length || 1;
+  const total = targetDateDiaries.length || 1;
 
   // Update Stat Cards
   document.getElementById('statJoyCount').textContent = `${counts.joy}명 (${Math.round(counts.joy/total*100)}%)`;
@@ -592,12 +616,12 @@ function renderClassWeather() {
   if (feedGrid) {
     feedGrid.innerHTML = '';
 
-    if (todayDiaries.length === 0) {
-      feedGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 30px; color: #94a3b8;">아직 오늘 공유된 라온반 일기가 없습니다. 첫 번째 일기를 작성해 보세요! 🌟</div>`;
+    if (targetDateDiaries.length === 0) {
+      feedGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 30px; color: #94a3b8;">${selectedDate === todayStr ? '아직 오늘 공유된 라온반 일기가 없습니다. 첫 번째 일기를 작성해 보세요! 🌟' : `${selectedDate}에 공유된 라온반 일기가 없습니다.`}</div>`;
       return;
     }
 
-    todayDiaries.forEach(entry => {
+    targetDateDiaries.forEach(entry => {
       if (!entry) return;
       const userName = (entry.user && entry.user.name) || entry.userName || '라온반 학생';
       const userAvatar = (entry.user && entry.user.avatar) || entry.userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userName)}`;
@@ -629,6 +653,14 @@ function renderClassWeather() {
       `;
       feedGrid.appendChild(card);
     });
+  }
+}
+
+function setWeatherDateToToday() {
+  const dateInput = document.getElementById('classWeatherDateFilter');
+  if (dateInput) {
+    dateInput.value = getTodayDateString();
+    renderClassWeather();
   }
 }
 
